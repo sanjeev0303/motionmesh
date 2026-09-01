@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
       "fastapi>=0.110.0" \
       "uvicorn[standard]>=0.28.0" \
       "langchain>=0.3.0" \
-      "langchain-google-genai>=1.0.0" \
+      "langchain-huggingface>=0.0.3" \
       "python-multipart>=0.0.9" \
       "python-dotenv>=1.0.0"
 
