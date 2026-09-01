@@ -126,6 +126,7 @@ module "api" {
     stripe_webhook_secret = var.stripe_webhook_secret
     gemini_api_key       = var.gemini_api_key
     captions_sidecar_url = local.captions_sidecar_url
+    cors_allowed_origins = join(",", local.cors_allowed_origins)
   }))
 
   depends_on = [module.aurora, module.elasticache, module.nats, module.captions]

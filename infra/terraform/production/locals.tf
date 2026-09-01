@@ -23,5 +23,6 @@ locals {
   cors_allowed_origins = [
     "https://${var.domain_name}",
     "https://www.${var.domain_name}",
+    "https://motionmesh-opal.vercel.app"
   ]
 }

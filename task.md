@@ -75,3 +75,10 @@
   - [x] Dashboard Dockerfile: NEXT_PUBLIC_API_URL as build arg (baked at build time)
   - [x] Updated server/.env.example with production documentation
   - [x] Updated .gitignore with Terraform secret/state files
+- [x] Fix CORS policy issue blocking motionmesh-opal.vercel.app from accessing api.motionmesh.co.in
+  - [x] Update locals.tf to include vercel app URL in cors_allowed_origins
+  - [x] Modify api user-data template to accept cors_allowed_origins variable
+  - [x] Apply Terraform changes to update API container environment variables
+- [x] Fix 401 Unauthorized errors in production API
+  - [x] Run PostgreSQL schema migrations (000_init_schema to 009_account_balance) against the Aurora database
+  - [x] Restart the API EC2 service to connect to the migrated schema
