@@ -1,0 +1,48 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# terraform.tfvars.example
+# Copy to terraform.tfvars and fill in real values.
+# Never commit terraform.tfvars to source control.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# AWS region
+aws_region = "ap-south-1"
+
+# Domains (Route 53 hosted zone must already exist for domain_name)
+domain_name = "motionmesh.co.in"
+api_domain  = "api.motionmesh.co.in"
+
+# VPC
+vpc_cidr = "10.20.0.0/16"
+azs      = ["ap-south-1a", "ap-south-1b"]
+
+# Aurora PostgreSQL
+db_name     = "motionmesh"
+db_username = "Motionmesh_db_admin"
+db_password = "0a260103b2fb5b2bbba38b7b30529f9a4a5ff2381d573ad84fb8500da1363f87_"
+
+# Application secrets (generate with: openssl rand -hex 64)
+jwt_secret            = "24f2d8eee7ac2976e9367221ae2db89d7884f70b5299f4b6db82977ba91734cf064cd35bb2a04fc2d745b72e44cfe8322de0d0b1ed51b3326ad2f1f30cb3da89"
+clerk_secret_key      = "sk_test_w3b53cr37k3y1234567890abcdefghijklmnopqrst"
+clerk_jwks_url        = "https://motionmesh.clerk.accounts.dev/.well-known/jwks.json"
+stripe_secret_key     = "<your_stripe_secret_key_here>"
+stripe_webhook_secret = "<your_stripe_webhook_secret_here>"
+gemini_api_key        = "<your_gemini_api_key_here>"
+
+# GitHub repository to clone on EC2 boot
+github_repository = "https://github.com/sanjeev0303/motion-mesh.git"
+github_branch     = "main"
+
+# Instance types (adjust for cost vs. performance)
+api_instance_type      = "t3.medium"
+worker_instance_type   = "t3.large"
+worker_count           = 1
+dashboard_instance_type = "t3.small"
+nats_instance_type     = "t3.small"
+captions_instance_type = "t3.xlarge"
+
+# Aurora & Redis instance classes
+aurora_instance_class = "db.t4g.medium"
+redis_node_type       = "cache.t4g.small"
+
+# EC2 key pair (optional — use SSM Session Manager if left empty)
+key_name = ""

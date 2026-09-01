@@ -1,0 +1,94 @@
+#!/bin/bash
+set -euo pipefail
+
+# ─── System update ────────────────────────────────────────────────────────────
+apt-get update -y
+fallocate -l 1G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=1024
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+apt-get install -y ca-certificates curl unzip
+
+# ─── Install NATS server ──────────────────────────────────────────────────────
+NATS_VERSION="2.10.22"
+curl -fsSL "https://github.com/nats-io/nats-server/releases/download/v$${NATS_VERSION}/nats-server-v$${NATS_VERSION}-linux-amd64.zip" \
+  -o /tmp/nats-server.zip
+unzip -o /tmp/nats-server.zip -d /tmp/nats-src
+mv /tmp/nats-src/nats-server-v$${NATS_VERSION}-linux-amd64/nats-server /usr/local/bin/nats-server
+chmod +x /usr/local/bin/nats-server
+rm -rf /tmp/nats-server.zip /tmp/nats-src
+
+# ─── NATS data directory ──────────────────────────────────────────────────────
+mkdir -p /var/lib/nats/jetstream
+useradd -r -s /bin/false nats 2>/dev/null || true
+chown -R nats:nats /var/lib/nats
+
+# ─── NATS configuration ───────────────────────────────────────────────────────
+cat > /etc/nats-server.conf << 'NATSCONF'
+# MotionMesh NATS JetStream — production
+listen: 0.0.0.0:4222
+
+# Disable monitoring port on public interface (internal use only)
+http: 127.0.0.1:8222
+
+jetstream {
+  store_dir: /var/lib/nats/jetstream
+  max_mem: 512m
+  max_file: 10g
+}
+
+log_file: /var/log/nats-server.log
+log_size_limit: 100m
+NATSCONF
+
+# ─── systemd unit ─────────────────────────────────────────────────────────────
+cat > /etc/systemd/system/nats-server.service << 'UNIT'
+[Unit]
+Description=NATS JetStream Server
+After=network.target
+Wants=network-online.target
+
+[Service]
+User=nats
+Group=nats
+ExecStart=/usr/local/bin/nats-server -c /etc/nats-server.conf
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now nats-server
+
+# ─── CloudWatch agent ─────────────────────────────────────────────────────────
+curl -fsSL https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb \
+  -o /tmp/cwa.deb
+dpkg -i /tmp/cwa.deb
+
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWA'
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/nats-server.log",
+            "log_group_name": "/motionmesh/nats",
+            "log_stream_name": "{instance_id}",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
+CWA
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
