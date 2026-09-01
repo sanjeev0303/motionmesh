@@ -124,3 +124,12 @@ func (r *Repository) ListObjectsByBucket(ctx context.Context, bucketID string, l
 
 	return objects, nil
 }
+
+func (r *Repository) DeleteBucket(ctx context.Context, bucketID string, accountID string) error {
+	query := `
+		DELETE FROM buckets
+		WHERE id = $1 AND account_id = $2
+	`
+	_, err := r.db.Exec(ctx, query, bucketID, accountID)
+	return err
+}

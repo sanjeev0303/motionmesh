@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/", h.listBuckets)
 	r.Post("/", h.createBucket)
 	r.Get("/{id}/objects", h.listObjects)
+	r.Delete("/{id}", h.deleteBucket)
 }
 
 func (h *Handler) listBuckets(w http.ResponseWriter, r *http.Request) {
@@ -121,4 +122,26 @@ func (h *Handler) listObjects(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"objects": objects,
 	})
+}
+
+func (h *Handler) deleteBucket(w http.ResponseWriter, r *http.Request) {
+	account, ok := r.Context().Value(auth.AccountContextKey).(*models.Account)
+	if !ok || account == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	bucketID := chi.URLParam(r, "id")
+	if bucketID == "" {
+		http.Error(w, "Bucket ID is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.service.DeleteBucket(r.Context(), bucketID, account.ID); err != nil {
+		logger.New().Error("Failed to delete bucket: %v", err)
+		http.Error(w, "Failed to delete bucket", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -140,13 +140,34 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
     setIsEditingName(false);
   };
 
-  const handleDelete = () => {
-    toast({
-      title: "Bucket deleted",
-      description: `${bucket.name} has been permanently deleted.`,
-      variant: "destructive",
-    });
-    router.push("/dashboard/buckets");
+  const handleDelete = async () => {
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/v1/buckets/${params.id}`, {
+        method: "DELETE",
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to delete bucket");
+      }
+      
+      toast({
+        title: "Bucket deleted",
+        description: `${bucket.name} has been permanently deleted.`,
+        variant: "destructive",
+      });
+      router.push("/dashboard/buckets");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Could not delete bucket. Please try again.",
+        variant: "destructive",
+      });
+      setIsDeleteDialogOpen(false);
+    }
   };
 
   return (
