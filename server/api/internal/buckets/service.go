@@ -13,6 +13,7 @@ type BucketRepository interface {
 	UpsertObjects(ctx context.Context, objects []models.BucketObject) error
 	GetBucketUsage(ctx context.Context, bucketID string) (usedBytes int64, count int, err error)
 	ListObjectsByBucket(ctx context.Context, bucketID string, limit int, cursor string) ([]*models.BucketObject, error)
+	GetAllObjectsByBucket(ctx context.Context, bucketID string) ([]*models.BucketObject, error)
 	DeleteBucket(ctx context.Context, bucketID string, accountID string) error
 }
 
@@ -52,5 +53,17 @@ func (s *Service) ListObjectsByBucket(ctx context.Context, bucketID string, limi
 }
 
 func (s *Service) DeleteBucket(ctx context.Context, bucketID string, accountID string) error {
+	// First, fetch all objects to delete them from S3
+	objects, err := s.repo.GetAllObjectsByBucket(ctx, bucketID)
+	if err != nil {
+		return err
+	}
+
+	// Delete from storage
+	for _, obj := range objects {
+		_ = s.storage.DeleteObject(ctx, obj.Key)
+	}
+
+	// Finally, delete from the database
 	return s.repo.DeleteBucket(ctx, bucketID, accountID)
 }

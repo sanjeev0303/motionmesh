@@ -125,6 +125,33 @@ func (r *Repository) ListObjectsByBucket(ctx context.Context, bucketID string, l
 	return objects, nil
 }
 
+func (r *Repository) GetAllObjectsByBucket(ctx context.Context, bucketID string) ([]*models.BucketObject, error) {
+	query := `
+		SELECT id, bucket_id, key, size_bytes, content_type, uploaded_at
+		FROM objects
+		WHERE bucket_id = $1
+	`
+	rows, err := r.db.Query(ctx, query, bucketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var objects []*models.BucketObject
+	for rows.Next() {
+		obj := &models.BucketObject{}
+		if err := rows.Scan(&obj.ID, &obj.BucketID, &obj.Key, &obj.SizeBytes, &obj.ContentType, &obj.UploadedAt); err != nil {
+			return nil, err
+		}
+		objects = append(objects, obj)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return objects, nil
+}
+
 func (r *Repository) DeleteBucket(ctx context.Context, bucketID string, accountID string) error {
 	query := `
 		DELETE FROM buckets
