@@ -57,7 +57,7 @@ func Load() *Config {
 	}
 
 	return &Config{
-		DatabaseURL: getEnv("DATABASE_URL", "postgresql://postgres:motionmesh_123d@motionmesh-db.cluster-cbgioucsyxsn.ap-south-1.rds.amazonaws.com:5432/motionmesh_admin?sslmode=require"),
+		DatabaseURL: getEnv("DATABASE_URL", ""),
 		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379/0"),
 		QueueURL:    getEnv("QUEUE_URL", "nats://localhost:4222"),
 

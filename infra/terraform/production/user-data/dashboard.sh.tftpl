@@ -58,6 +58,9 @@ cd /opt/motionmesh
 docker build \
   --build-arg BUILDKIT_INLINE_CACHE=1 \
   --build-arg NEXT_PUBLIC_API_URL=${next_public_api_url} \
+  --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${next_public_clerk_publishable_key} \
+  --build-arg NEXT_PUBLIC_MOTIONMESH_BUCKET_ID=${next_public_motionmesh_bucket_id} \
+  --build-arg NEXT_PUBLIC_MOTIONMESH_TRANSCODE_BUCKET_ID=${next_public_motionmesh_transcode_bucket_id} \
   -f client/dashboard/Dockerfile \
   -t motionmesh-dashboard:latest \
   .

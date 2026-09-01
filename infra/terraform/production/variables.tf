@@ -62,6 +62,11 @@ variable "jwt_secret" {
   sensitive = true
 }
 
+variable "clerk_publishable_key" {
+  type      = string
+  sensitive = true
+}
+
 variable "clerk_secret_key" {
   type      = string
   sensitive = true
@@ -91,7 +96,7 @@ variable "gemini_api_key" {
 
 variable "github_repository" {
   type    = string
-  default = "https://github.com/sanjeev0303/motion-mesh.git"
+  default = "https://github.com/sanjeev0303/motionmesh.git"
 }
 
 variable "github_branch" {

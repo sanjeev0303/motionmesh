@@ -11,7 +11,10 @@ import (
 )
 
 func main() {
-	dsn := "postgresql://neondb_owner:npg_ga1wWr3VPUSZ@ep-sparkling-rice-azuyx8p2.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("DATABASE_URL is required")
+	}
 	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)

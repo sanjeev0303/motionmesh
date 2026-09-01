@@ -12,7 +12,11 @@ import (
 
 func main() {
     ctx := context.Background()
-    db, err := pgxpool.New(ctx, "postgresql://neondb_owner:npg_ga1wWr3VPUSZ@ep-sparkling-rice-azuyx8p2-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("DATABASE_URL is required")
+	}
+    db, err := pgxpool.New(ctx, dsn)
     if err != nil {
         log.Fatal(err)
     }
