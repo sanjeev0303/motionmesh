@@ -63,6 +63,8 @@ WantedBy=multi-user.target
 UNIT
 
 systemctl daemon-reload
+touch /var/log/nats-server.log
+chown nats:nats /var/log/nats-server.log
 systemctl enable --now nats-server
 
 # ─── CloudWatch agent ─────────────────────────────────────────────────────────

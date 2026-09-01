@@ -79,6 +79,13 @@ ExecStart=/usr/bin/docker run --rm \
   --name motionmesh-dashboard \
   -p 3000:3000 \
   -e NODE_ENV=production \
+  -e NEXT_PUBLIC_API_URL=${next_public_api_url} \
+  -e NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${next_public_clerk_publishable_key} \
+  -e CLERK_SECRET_KEY=${clerk_secret_key} \
+  -e NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login \
+  -e NEXT_PUBLIC_CLERK_SIGN_UP_URL=/signup \
+  -e NEXT_PUBLIC_MOTIONMESH_BUCKET_ID=${next_public_motionmesh_bucket_id} \
+  -e NEXT_PUBLIC_MOTIONMESH_TRANSCODE_BUCKET_ID=${next_public_motionmesh_transcode_bucket_id} \
   --log-driver awslogs \
   --log-opt awslogs-region=${aws_region} \
   --log-opt awslogs-group=/motionmesh/dashboard \

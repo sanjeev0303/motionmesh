@@ -186,6 +186,7 @@ module "dashboard" {
     aws_region           = var.aws_region
     next_public_api_url  = local.public_api_url
     next_public_clerk_publishable_key = var.clerk_publishable_key
+    clerk_secret_key     = var.clerk_secret_key
     next_public_motionmesh_bucket_id = local.s3_bucket_name
     next_public_motionmesh_transcode_bucket_id = local.s3_bucket_name
   }))
