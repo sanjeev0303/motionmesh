@@ -29,25 +29,37 @@ type TranscodeJobMessage struct {
 
 // TriggerJob creates a job in the database and publishes a message to NATS.
 func (s *Service) TriggerJob(ctx context.Context, video *models.Video) error {
-	// 1. Create job in postgres idempotently to prevent race conditions
+	// 1. Create job in postgres idempotently
 	var jobID string
 	err := s.db.QueryRow(ctx,
-		`INSERT INTO transcode_jobs (id, video_id, status)
-		 SELECT gen_random_uuid(), $1, $2
+		`INSERT INTO transcode_jobs (id, video_id, status, progress_percent)
+		 SELECT gen_random_uuid(), $1, $2, 0
 		 WHERE NOT EXISTS (SELECT 1 FROM transcode_jobs WHERE video_id = $1)
 		 RETURNING id`,
 		video.ID, models.JobStatusQueued,
 	).Scan(&jobID)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		// Job already exists — do not re-publish to avoid duplicate processing
-		return nil
-	}
-	if err != nil {
+		// Job already exists — let's check if we can re-trigger it.
+		// We only re-trigger if it's failed or completed (not queued or processing).
+		tag, updateErr := s.db.Exec(ctx,
+			`UPDATE transcode_jobs 
+			 SET status = $2, progress_percent = 0, error_msg = NULL, updated_at = now() 
+			 WHERE video_id = $1 AND status NOT IN ('queued', 'processing')`,
+			video.ID, models.JobStatusQueued)
+		if updateErr != nil {
+			return fmt.Errorf("failed to update transcode job: %w", updateErr)
+		}
+		if tag.RowsAffected() == 0 {
+			// Job is currently queued or processing, or doesn't exist (which contradicts the branch, but just in case).
+			// Do not re-publish.
+			return nil
+		}
+	} else if err != nil {
 		return fmt.Errorf("failed to create transcode job: %w", err)
 	}
 
-	// 2. Publish to NATS JetStream (only when job was freshly created)
+	// 2. Publish to NATS JetStream
 	msg := TranscodeJobMessage{
 		VideoID:           video.ID,
 		SourceObjectKey:   video.ObjectKey,
