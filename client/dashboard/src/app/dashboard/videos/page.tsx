@@ -72,16 +72,45 @@ export default function VideosPage() {
     toast({ title: "Uploading…", description: `Starting upload for "${file.name}"` });
 
     try {
-      // Step 1: Upload via the SDK proxy method
-      const newVideo = await motionmesh.videos.dashboardUpload({
-        video: file,
-        filename: file.name,
-        sizeBytes: file.size,
-        bucketId: process.env.NEXT_PUBLIC_MOTIONMESH_BUCKET_ID,
-        transcodeBucketId: process.env.NEXT_PUBLIC_MOTIONMESH_TRANSCODE_BUCKET_ID,
+      // Step 1: Initiate upload via API (bypassing SDK form data buffering)
+      const initRes = await api.POST("/v1/videos", {
+        body: {
+          filename: file.name,
+          size_bytes: file.size,
+          bucket_id: process.env.NEXT_PUBLIC_MOTIONMESH_BUCKET_ID || "",
+          transcode_bucket_id: process.env.NEXT_PUBLIC_MOTIONMESH_TRANSCODE_BUCKET_ID || "",
+        } as any,
       });
 
-      // Step 2 — add to local cache so the row appears immediately
+      if (initRes.error || !initRes.response.ok) {
+        throw new Error((initRes.error as any)?.message || "Failed to initiate upload");
+      }
+
+      const { video: newVideo, upload_url } = initRes.data as any;
+
+      // Step 2: Upload directly to S3 from the browser
+      const uploadRes = await fetch(upload_url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type || "video/mp4",
+        },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error(`S3 upload failed: ${uploadRes.statusText}`);
+      }
+
+      // Step 3: Finalize upload
+      const finalizeRes = await api.POST("/v1/videos/{id}/finalize-upload" as any, {
+        params: { path: { id: newVideo.id } }
+      });
+
+      if (finalizeRes.error || !finalizeRes.response.ok) {
+        throw new Error("Failed to finalize upload");
+      }
+
+      // Step 4: add to local cache so the row appears immediately
       queryClient.setQueryData(["videos"], (old: Video[] | undefined) => [newVideo, ...(old ?? [])]);
       toast({ title: "Upload complete", description: `"${file.name}" is queued for processing.` });
       setIsUploadDialogOpen(false);
