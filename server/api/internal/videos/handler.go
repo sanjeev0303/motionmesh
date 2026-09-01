@@ -37,6 +37,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/{id}", h.HandleGetVideo)
 	r.Delete("/{id}", h.HandleDeleteVideo)
 	r.Post("/{id}/upload", h.HandleProxyUpload)
+	r.Post("/{id}/finalize-upload", h.HandleFinalizeUpload)
 	r.Get("/{id}/thumbnail", h.HandleGetThumbnail)
 	r.Get("/{id}/playback", h.HandleGetPlaybackInfo)
 	r.Post("/{id}/transcode", h.HandleCreateTranscodeJob)
@@ -267,6 +268,43 @@ func (h *Handler) HandleProxyUpload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"status": "uploaded"})
+}
+
+func (h *Handler) HandleFinalizeUpload(w http.ResponseWriter, r *http.Request) {
+	acc, ok := r.Context().Value(auth.AccountContextKey).(*models.Account)
+	if !ok || acc == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	id := chi.URLParam(r, "id")
+	video, err := h.svc.GetVideo(r.Context(), id, acc.ID)
+	if err != nil || video == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	// Record the uploaded source file in the bucket tracking table
+	objRec := []models.BucketObject{
+		{
+			BucketID:    video.BucketID,
+			Key:         video.ObjectKey,
+			SizeBytes:   int64(video.SizeBytes),
+			ContentType: "video/mp4", // Or passed in via request, defaulting to mp4
+		},
+	}
+	if err := h.bucketSvc.UpsertObjects(r.Context(), objRec); err != nil {
+		logger.New().Error("upsert source object to bucket tracker: %v", err)
+	}
+
+	// Trigger transcode now that the file is in storage
+	if err := h.transcodeSvc.TriggerJob(r.Context(), video); err != nil {
+		logger.New().Error("trigger transcode job: %v", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "finalized"})
 }
 
 func (h *Handler) HandleGetThumbnail(w http.ResponseWriter, r *http.Request) {
