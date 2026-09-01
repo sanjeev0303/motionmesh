@@ -136,10 +136,11 @@ export default function VideosPage() {
         </div>
         <Button
           onClick={() => setIsUploadDialogOpen(true)}
+          disabled={isUploading}
           className="bg-accent-motion text-bg-base hover:bg-accent-motion/90"
         >
-          <UploadCloud className="mr-2 h-4 w-4" />
-          Upload Video
+          <UploadCloud className={`mr-2 h-4 w-4 ${isUploading ? "animate-pulse" : ""}`} />
+          {isUploading ? "Uploading..." : "Upload Video"}
         </Button>
       </div>
 
@@ -184,10 +185,11 @@ export default function VideosPage() {
           </p>
           <Button
             onClick={() => setIsUploadDialogOpen(true)}
+            disabled={isUploading}
             className="bg-accent-motion text-bg-base hover:bg-accent-motion/90"
           >
-            <UploadCloud className="mr-2 h-4 w-4" />
-            Upload Video
+            <UploadCloud className={`mr-2 h-4 w-4 ${isUploading ? "animate-pulse" : ""}`} />
+            {isUploading ? "Uploading..." : "Upload Video"}
           </Button>
         </div>
       )}
