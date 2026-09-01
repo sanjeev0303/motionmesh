@@ -75,6 +75,7 @@ ExecStart=/usr/bin/docker run --rm \
   --name motionmesh-captions \
   --memory 4g \
   -p 8000:8000 \
+  -e HUGGINGFACE_API_KEY=${huggingface_api_key} \
   --log-driver awslogs \
   --log-opt awslogs-region=${aws_region} \
   --log-opt awslogs-group=/motionmesh/captions \

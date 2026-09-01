@@ -27,7 +27,7 @@ type Config struct {
 
 	// Worker / Sidecar
 	CaptionsSidecarURL string
-	GeminiAPIKey       string
+	HuggingfaceAPIKey  string
 
 	// CORS (comma-separated list of allowed origins)
 	CorsAllowedOrigins string
@@ -72,7 +72,7 @@ func Load() *Config {
 		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
 
 		CaptionsSidecarURL: getEnv("CAPTIONS_SIDECAR_URL", "http://localhost:8000"),
-		GeminiAPIKey:       getEnv("GEMINI_API_KEY", ""),
+		HuggingfaceAPIKey:  getEnv("HUGGINGFACE_API_KEY", ""),
 
 		CorsAllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", ""),
 	}

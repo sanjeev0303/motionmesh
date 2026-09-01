@@ -5,7 +5,7 @@ from typing import List
 from pydantic import BaseModel
 from langchain_core.prompts import ChatPromptTemplate
 from faster_whisper import WhisperModel
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 
 logger = logging.getLogger(__name__)
 
@@ -33,19 +33,20 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:02d}.{ms:03d}"
 
 def generate_chapters(text: str) -> List[ChapterInfo]:
-    gemini_key = os.getenv("GEMINI_API_KEY")
+    hf_api_key = os.getenv("HUGGINGFACE_API_KEY")
 
-    if not gemini_key or gemini_key == "your_gemini_api_key_here":
-        logger.warning("No valid GEMINI_API_KEY provided, skipping chapters")
+    if not hf_api_key:
+        logger.warning("No valid HUGGINGFACE_API_KEY provided, skipping chapters")
         return []
 
     try:
-        chat_model = ChatGoogleGenerativeAI(
-            api_key=gemini_key,
-            model="gemini-3.6-flash",
-            temperature=0,
-            max_output_tokens=2048
+        llm = HuggingFaceEndpoint(
+            repo_id="mistralai/Mistral-7B-Instruct-v0.3",
+            max_new_tokens=2048,
+            temperature=0.1,
+            huggingfacehub_api_token=hf_api_key,
         )
+        chat_model = ChatHuggingFace(llm=llm)
 
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an expert at analyzing video transcripts.

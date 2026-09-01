@@ -93,6 +93,7 @@ module "captions" {
     github_repository = var.github_repository
     github_branch     = var.github_branch
     aws_region        = var.aws_region
+    huggingface_api_key = var.huggingface_api_key
   }))
 }
 
@@ -124,7 +125,7 @@ module "api" {
     clerk_jwks_url       = var.clerk_jwks_url
     stripe_secret_key    = var.stripe_secret_key
     stripe_webhook_secret = var.stripe_webhook_secret
-    gemini_api_key       = var.gemini_api_key
+    huggingface_api_key  = var.huggingface_api_key
     captions_sidecar_url = local.captions_sidecar_url
     cors_allowed_origins = join(",", local.cors_allowed_origins)
   }))
@@ -159,7 +160,7 @@ module "worker" {
     clerk_jwks_url       = var.clerk_jwks_url
     stripe_secret_key    = var.stripe_secret_key
     stripe_webhook_secret = var.stripe_webhook_secret
-    gemini_api_key       = var.gemini_api_key
+    huggingface_api_key  = var.huggingface_api_key
     captions_sidecar_url = local.captions_sidecar_url
   }))
 

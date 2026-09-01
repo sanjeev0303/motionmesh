@@ -86,7 +86,7 @@ variable "stripe_webhook_secret" {
   sensitive = true
 }
 
-variable "gemini_api_key" {
+variable "huggingface_api_key" {
   type      = string
   sensitive = true
   default   = ""
