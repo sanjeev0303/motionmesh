@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^5.7.6",
-    "@motionmesh/player": "file:../../sdk/js/packages/player",
-    "@motionmesh/sdk": "file:../../sdk/js/packages/sdk",
+    "@motionmesh/player": "^1.0.1",
+    "@motionmesh/sdk": "^1.0.1",
     "@radix-ui/react-dialog": "^1.1.19",
     "@radix-ui/react-label": "^2.1.11",
     "@radix-ui/react-popover": "^1.1.19",

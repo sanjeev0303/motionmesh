@@ -11,7 +11,7 @@ npm install @motionmesh/player
 ## Quickstart
 
 ```jsx
-import { MotionmeshPlayer } from "@motionmesh/player";
+import { MotionmeshPlayer } from "@motionmesh/player/react";
 
 export default function VideoPage() {
   // Pass the signed playback URL obtained from the Motionmesh SDK

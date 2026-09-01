@@ -4,6 +4,6 @@ export interface EnvConfig {
 
 export const getEnvConfig = (): EnvConfig => {
     return {
-        baseUrl: process.env.MOTIONMESH_BASE_URL || "http://localhost:8080/v1",
+        baseUrl: process.env.MOTIONMESH_BASE_URL || "https://motionmesh.co.in/v1",
     };
 };

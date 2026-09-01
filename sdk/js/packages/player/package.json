@@ -1,8 +1,8 @@
 {
   "name": "@motionmesh/player",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "React video player component for Motionmesh, built on Vidstack",
-  "license": "ISC",
+  "license": "MIT",
   "author": "sanjeev0303",
   "type": "module",
 
@@ -52,13 +52,16 @@
   "sideEffects": true,
 
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
 
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "clean": "rm -rf dist",
+    "pack:dry-run": "npm pack --dry-run",
+    "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run clean && npm run build"
   },
 
@@ -71,15 +74,16 @@
     "streaming"
   ],
 
-  "homepage": "https://github.com/Motionmesh Stack/motionmesh-player#readme",
+  "homepage": "https://github.com/sanjeev0303/motionmesh#readme",
 
   "bugs": {
-    "url": "https://github.com/Motionmesh Stack/motionmesh-player/issues"
+    "url": "https://github.com/sanjeev0303/motionmesh/issues"
   },
 
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Motionmesh Stack/motionmesh-player.git"
+    "url": "git+https://github.com/sanjeev0303/motionmesh.git",
+    "directory": "sdk/js/packages/player"
   },
 
   "engines": {

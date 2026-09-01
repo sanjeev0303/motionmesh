@@ -11,21 +11,14 @@ npm install @motionmesh/sdk
 ## Quickstart
 
 ```javascript
-import { MotionmeshClient } from "@motionmesh/sdk";
-
-// Initialize the client
-// Important: This should run server-side or via a secure proxy.
-// Never expose your API key directly in browser code.
-const client = new MotionmeshClient({ apiKey: process.env.MOTIONMESH_API_KEY });
+import { motionmesh } from "@motionmesh/sdk";
 
 // Transcode a video
-const video = await client.mediaConverter.createJob({
-  file: myVideoFile,
-  bucketId: process.env.MOTIONMESH_BUCKET_ID,
-});
+// Important: This should run server-side. Never expose secrets directly in browser code.
+const video = await motionmesh.mediaConverter.createJob("vid_123", "https://api.motionmesh.co.in");
 
 // Get playback URL
-const playbackUrl = await client.videos.getPlaybackUrl(video.id);
+const playbackInfo = await motionmesh.videos.getPlaybackInfo(video.id, "https://api.motionmesh.co.in");
 ```
 
 ## Documentation

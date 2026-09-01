@@ -3,6 +3,11 @@ dev:
 	docker compose up -d --build
 	@echo "Services started. Run make stop to tear down."
 
+link-sdk:
+	@echo "Linking local SDK to dashboard for development..."
+	cd client/dashboard && npm install ../../sdk/js/packages/sdk ../../sdk/js/packages/player --no-save
+	@echo "Remember to revert package.json before committing!"
+
 stop:
 	docker compose down
 

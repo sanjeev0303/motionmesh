@@ -1,8 +1,8 @@
 {
     "name": "@motionmesh/sdk",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "SDK for Motionmesh API",
-    "license": "ISC",
+    "license": "MIT",
     "author": "Sanjeev0303",
     "type": "module",
     "main": "./dist/index.cjs",
@@ -35,12 +35,15 @@
     },
     "sideEffects": false,
     "publishConfig": {
-        "access": "public"
+        "access": "public",
+        "registry": "https://registry.npmjs.org/"
     },
     "scripts": {
         "build": "tsup",
         "dev": "tsup --watch",
         "clean": "rm -rf dist",
+        "pack:dry-run": "npm pack --dry-run",
+        "typecheck": "tsc --noEmit",
         "prepublishOnly": "npm run clean && npm run build"
     },
     "keywords": [
@@ -48,13 +51,14 @@
         "storage",
         "motionmesh"
     ],
-    "homepage": "https://github.com/sanjeev0303",
+    "homepage": "https://github.com/sanjeev0303/motionmesh#readme",
     "bugs": {
-        "url": "https://github.com/sanjeev0303"
+        "url": "https://github.com/sanjeev0303/motionmesh/issues"
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/sanjeev0303/motionmesh.git"
+        "url": "git+https://github.com/sanjeev0303/motionmesh.git",
+        "directory": "sdk/js/packages/sdk"
     },
     "engines": {
         "node": ">=18"
