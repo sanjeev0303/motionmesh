@@ -64,7 +64,7 @@ export function VideoJobRow({ video }: VideoJobRowProps) {
       <TableCell className="text-text-muted text-right font-mono text-sm">
         {video.size_bytes && video.size_bytes > 0 ? formatBytes(video.size_bytes) : "-"}
       </TableCell>
-      <TableCell className="text-text-muted text-right text-sm">
+      <TableCell className="text-text-muted text-right text-sm" suppressHydrationWarning>
         {video.created_at ? new Date(video.created_at).toLocaleDateString(undefined, {
           year: 'numeric',
           month: 'short',

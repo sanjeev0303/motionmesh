@@ -273,7 +273,7 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
               </div>
               <div>
                 <dt className="text-sm font-medium text-text-muted mb-1">Uploaded At</dt>
-                <dd className="text-text-primary text-sm">
+                <dd suppressHydrationWarning className="text-text-primary text-sm">
                   {video.created_at ? new Date(video.created_at).toLocaleString() : "-"}
                 </dd>
               </div>

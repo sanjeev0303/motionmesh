@@ -287,10 +287,10 @@ export function ApiKeysClient({ initialKeys }: ApiKeysClientProps) {
                         </button>
                       </div>
                     </TableCell>
-                    <TableCell className="text-text-muted text-sm">
+                    <TableCell suppressHydrationWarning className="text-text-muted text-sm">
                       {!key.last_used_at ? "Never" : new Date(key.last_used_at).toLocaleDateString()}
                     </TableCell>
-                    <TableCell className="text-text-muted text-sm">
+                    <TableCell suppressHydrationWarning className="text-text-muted text-sm">
                       {new Date(key.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>

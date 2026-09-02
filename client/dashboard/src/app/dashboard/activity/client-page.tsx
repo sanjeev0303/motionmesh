@@ -122,7 +122,7 @@ export function ActivityClient({ initialVideos }: ActivityClientProps) {
                 ) : (
                   filteredActivity.map((act) => (
                     <tr key={act.id} className="hover:bg-surface-raised transition-colors">
-                      <td className="px-4 py-3 text-text-muted font-mono text-xs whitespace-nowrap">
+                      <td suppressHydrationWarning className="px-4 py-3 text-text-muted font-mono text-xs whitespace-nowrap">
                         {new Date(act.timestamp).toLocaleString()}
                       </td>
                       <td className="px-4 py-3 font-medium text-text-primary">

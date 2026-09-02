@@ -216,7 +216,7 @@ export function BucketsClient({ initialBuckets }: BucketsClientProps) {
                       limit={bucket.egressLimitBytes} 
                     />
                   </TableCell>
-                  <TableCell className="text-text-muted text-right text-sm">
+                  <TableCell className="text-text-muted text-right text-sm" suppressHydrationWarning>
                     {new Date(bucket.createdAt).toLocaleDateString(undefined, {
                       year: 'numeric',
                       month: 'short',

@@ -18,3 +18,8 @@
 - [x] Output path: each rendition in Label/stream.m3u8 + Label/seg*.ts; master.m3u8 URIs updated to match
 - [x] UploadHLS: WalkDir handles nested rendition dirs; 16 concurrent S3 workers (up from 8)
 - [x] Deployed motionmesh-worker as new systemd Docker service (was not previously running); both API + Worker up ✅
+- [x] Fix Dashboard Hydration Errors: Applied `suppressHydrationWarning` to all components rendering timezone-dependent `Date` objects (`VideoJobRow.tsx`, `NotificationDropdown.tsx`, `usage/client-page.tsx`, etc.), resolving Minified React errors #425, #418, #423.
+- [x] Fix Video Upload Buckets: Dashboard now correctly maps and passes `transcode_bucket_id` to the video creation API using `NEXT_PUBLIC_MOTIONMESH_TRANSCODE_BUCKET_ID` env variable, ensuring transcode isolation.
+- [x] Transcoding Speed & Renditions: Changed FFmpeg preset to `ultrafast` for maximum throughput and updated the ABR ladder (`abrladder.go`) to unconditionally transcode uploaded videos into all 8 requested resolutions (144p to 2160p) as explicitly requested.
+- [x] Database Fix Instructions: Since local direct connection to AWS RDS is blocked, provided the SQL queries required to manually requeue the failed video (`195959c6-7a40-43d2-b413-3a8618de9748`) and backfill `transcode_bucket_id` for existing records.
+- [x] Finalize Hydration Fixes: Applied `suppressHydrationWarning` to remaining elements in `team/page.tsx`, `keys/client-page.tsx`, `buckets/[id]/page.tsx`, `media-convert/client-page.tsx`, `activity/client-page.tsx`, and `videos/[id]/page.tsx`.

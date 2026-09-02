@@ -245,7 +245,7 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
                 )}
                 {invoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-surface-raised transition-colors">
-                    <td className="px-4 py-3 text-text-primary">
+                    <td className="px-4 py-3 text-text-primary" suppressHydrationWarning>
                       {new Date(inv.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </td>
                     <td className="px-4 py-3 font-mono font-medium">${inv.amount.toFixed(2)}</td>

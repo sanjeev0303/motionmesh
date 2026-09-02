@@ -174,7 +174,7 @@ export default function TeamPage() {
                           {member.role}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-text-muted hidden sm:table-cell font-mono text-xs">
+                      <td suppressHydrationWarning className="px-4 py-4 text-text-muted hidden sm:table-cell font-mono text-xs">
                         {new Date(member.joinedAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-4 text-right">

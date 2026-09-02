@@ -235,7 +235,7 @@ export default function DashboardClient({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-text-primary truncate">{video.title}</p>
-                        <p className="text-xs text-text-muted font-mono mt-1">{new Date(video.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-text-muted font-mono mt-1" suppressHydrationWarning>{new Date(video.created_at).toLocaleDateString()}</p>
                       </div>
                       <div>
                         <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
@@ -292,7 +292,7 @@ export default function DashboardClient({
                       </p>
                       <div className="flex items-center gap-1 text-xs text-text-muted mt-1">
                         <Clock className="w-3 h-3" />
-                        <span>{new Date(act.timestamp).toLocaleDateString()}</span>
+                        <span suppressHydrationWarning>{new Date(act.timestamp).toLocaleDateString()}</span>
                       </div>
                     </div>
                   </div>

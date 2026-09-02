@@ -65,7 +65,7 @@ export function NotificationDropdown() {
                     <p className="text-xs text-text-muted leading-relaxed">
                       {notification.body}
                     </p>
-                    <p className="text-[10px] font-mono text-text-muted pt-1">
+                    <p className="text-[10px] font-mono text-text-muted pt-1" suppressHydrationWarning>
                       {new Date(notification.timestamp).toLocaleString(undefined, { 
                         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
                       })}

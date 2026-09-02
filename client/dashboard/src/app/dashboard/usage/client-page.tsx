@@ -207,7 +207,7 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
                         key={event.id}
                         className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors"
                       >
-                        <TableCell className="text-text-muted text-sm">
+                        <TableCell className="text-text-muted text-sm" suppressHydrationWarning>
                           {new Date(event.date).toLocaleString()}
                         </TableCell>
                         <TableCell>

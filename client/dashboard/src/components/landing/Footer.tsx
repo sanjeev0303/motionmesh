@@ -47,7 +47,7 @@ export function Footer() {
           </div>
         </div>
         <div className="pt-8 border-t border-borderSubtle flex flex-col md:flex-row items-center justify-between text-sm text-text-muted">
-          <p>© {new Date().getFullYear()} Motionmesh. Not a real product.</p>
+          <p suppressHydrationWarning>© {new Date().getFullYear()} Motionmesh. Not a real product.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
             <Link href="#" className="hover:text-text-primary transition-colors">Privacy Policy</Link>
             <Link href="#" className="hover:text-text-primary transition-colors">Terms of Service</Link>

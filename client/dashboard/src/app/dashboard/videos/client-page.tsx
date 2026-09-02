@@ -102,6 +102,8 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
         body: {
           filename: file.name,
           size_bytes: file.size,
+          bucket_id: process.env.NEXT_PUBLIC_MOTIONMESH_BUCKET_ID,
+          transcode_bucket_id: process.env.NEXT_PUBLIC_MOTIONMESH_TRANSCODE_BUCKET_ID,
         } as any,
       });
 

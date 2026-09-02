@@ -147,7 +147,7 @@ func encodeRendition(ctx context.Context, inputPath string, probe *ProbeResult, 
 	}
 	args = append(args,
 		"-c:v", "libx264",
-		"-preset", "superfast",  // faster than veryfast; acceptable quality
+		"-preset", "ultrafast",  // ultrafast for maximum throughput
 		"-b:v", r.Bitrate,
 		"-maxrate", r.MaxRate,
 		"-bufsize", r.BufSize,

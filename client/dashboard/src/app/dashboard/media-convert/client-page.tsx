@@ -194,7 +194,7 @@ export function MediaConvertClient({ initialJobs }: MediaConvertClientProps) {
                       <TableCell>
                         <JobStatusBadge status={job.status} progress={job.progress_percent} />
                       </TableCell>
-                      <TableCell className="text-text-muted text-sm text-right">
+                      <TableCell suppressHydrationWarning className="text-text-muted text-sm text-right">
                         {new Date(job.created_at).toLocaleString()}
                       </TableCell>
                     </TableRow>

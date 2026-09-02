@@ -311,7 +311,7 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
                         </TableCell>
                         <TableCell className="text-text-muted">-</TableCell>
                         <TableCell className="text-text-muted text-right font-mono text-sm">{formatBytes(totalSize)}</TableCell>
-                        <TableCell className="text-text-muted text-right text-sm">
+                        <TableCell className="text-text-muted text-right text-sm" suppressHydrationWarning>
                           {mostRecentDate.toLocaleDateString()}
                         </TableCell>
                       </TableRow>
@@ -324,7 +324,7 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
                           </TableCell>
                           <TableCell className="text-text-muted text-sm">{obj.contentType}</TableCell>
                           <TableCell className="text-text-muted text-right font-mono text-sm">{formatBytes(obj.sizeBytes || 0)}</TableCell>
-                          <TableCell className="text-text-muted text-right text-sm">
+                          <TableCell suppressHydrationWarning className="text-text-muted text-right text-sm">
                             {new Date(obj.uploadedAt).toLocaleDateString()}
                           </TableCell>
                         </TableRow>
