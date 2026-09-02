@@ -27,7 +27,7 @@ export default function ApiKeysPage() {
     queryKey: ['apiKeys'],
     queryFn: async () => {
       // Assuming a GET /v1/api-keys endpoint exists in the real API
-      const { data, error, response } = await api.GET("/v1/api-keys" as any, {}); // Using "any" if the endpoint is not yet in the OpenAPI spec
+      const { data, error, response } = await api.GET("/v1/api-keys" as any, {});
       if (error || !response.ok) {
         if (response?.status === 401 || response?.status === 403) {
           toast({ title: "Unauthorized", description: "Please log in to view your API keys.", variant: "destructive" });
@@ -36,7 +36,10 @@ export default function ApiKeysPage() {
         }
         throw new Error("Failed to load real API keys");
       }
-      return (data as unknown as any[]) ?? [];
+      
+      // openapi-fetch might not populate `data` for casted `any` endpoints, so we manually parse the response
+      const keys = data ? (data as any) : await response.json().catch(() => []);
+      return Array.isArray(keys) ? keys : [];
     },
     staleTime: 60000,
   });
