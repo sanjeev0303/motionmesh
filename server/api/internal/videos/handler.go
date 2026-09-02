@@ -188,28 +188,56 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 	objectKey := acc.ID + "/videos/" + req.Filename
 
 	var bucketID string
+	var transcodeBucketID *string
+
+	buckets, err := h.bucketSvc.ListBuckets(r.Context(), acc.ID)
+	var availableBuckets []*models.Bucket
+	if err == nil {
+		availableBuckets = buckets
+	}
+
 	if req.BucketID != nil && *req.BucketID != "" {
 		if _, err := uuid.Parse(*req.BucketID); err == nil {
 			bucketID = *req.BucketID
+		} else {
+			// Fallback: search by bucket name
+			for _, b := range availableBuckets {
+				if b.Name == *req.BucketID {
+					bucketID = b.ID
+					break
+				}
+			}
 		}
+	}
+	
+	if bucketID == "" && len(availableBuckets) > 0 {
+		bucketID = availableBuckets[0].ID
 	}
 	
 	if bucketID == "" {
-		buckets, err := h.bucketSvc.ListBuckets(r.Context(), acc.ID)
-		if err == nil && len(buckets) > 0 {
-			bucketID = buckets[0].ID
-		} else {
-			logger.New().Error("no buckets found for account %s", acc.ID)
-			http.Error(w, "No storage bucket configured", http.StatusBadRequest)
-			return
-		}
+		logger.New().Error("no buckets found for account %s", acc.ID)
+		http.Error(w, "No storage bucket configured", http.StatusBadRequest)
+		return
 	}
 	
-	var transcodeBucketID *string
 	if req.TranscodeBucketID != nil && *req.TranscodeBucketID != "" {
 		if _, err := uuid.Parse(*req.TranscodeBucketID); err == nil {
 			transcodeBucketID = req.TranscodeBucketID
+		} else {
+			// Fallback: search by bucket name
+			for _, b := range availableBuckets {
+				if b.Name == *req.TranscodeBucketID {
+					tid := b.ID
+					transcodeBucketID = &tid
+					break
+				}
+			}
 		}
+	}
+	
+	if transcodeBucketID == nil && bucketID != "" {
+		tid := bucketID
+		transcodeBucketID = &tid
 	}
 
 	video := &models.Video{
