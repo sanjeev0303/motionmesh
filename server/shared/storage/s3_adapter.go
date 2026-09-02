@@ -147,6 +147,66 @@ func (a *S3Adapter) CheckACL(ctx context.Context, bucket string) error {
 	return nil
 }
 
+// CreateMultipartUpload initiates an S3 multipart upload and returns the upload ID.
+func (a *S3Adapter) CreateMultipartUpload(ctx context.Context, bucket, key, contentType string) (string, error) {
+	out, err := a.client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(key),
+		ContentType: aws.String(contentType),
+	}, func(o *s3.Options) {
+		o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+	})
+	if err != nil {
+		return "", fmt.Errorf("create multipart upload: %w", err)
+	}
+	return aws.ToString(out.UploadId), nil
+}
+
+// PresignUploadPart returns a presigned URL for uploading a single part.
+// Expiry is 1 hour — long enough for large parts on slow connections.
+func (a *S3Adapter) PresignUploadPart(ctx context.Context, bucket, key, uploadID string, partNumber int32) (string, error) {
+	req, err := a.presigner.PresignUploadPart(ctx, &s3.UploadPartInput{
+		Bucket:     aws.String(bucket),
+		Key:        aws.String(key),
+		UploadId:   aws.String(uploadID),
+		PartNumber: aws.Int32(partNumber),
+	}, s3.WithPresignExpires(60*time.Minute))
+	if err != nil {
+		return "", fmt.Errorf("presign part %d: %w", partNumber, err)
+	}
+	return req.URL, nil
+}
+
+// CompleteMultipartUpload assembles the parts into a single object.
+func (a *S3Adapter) CompleteMultipartUpload(ctx context.Context, bucket, key, uploadID string, parts []CompletedPart) error {
+	s3Parts := make([]awss3types.CompletedPart, len(parts))
+	for i, p := range parts {
+		s3Parts[i] = awss3types.CompletedPart{
+			PartNumber: aws.Int32(p.PartNumber),
+			ETag:       aws.String(p.ETag),
+		}
+	}
+	_, err := a.client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+		MultipartUpload: &awss3types.CompletedMultipartUpload{
+			Parts: s3Parts,
+		},
+	})
+	return err
+}
+
+// AbortMultipartUpload cancels an in-progress multipart upload.
+func (a *S3Adapter) AbortMultipartUpload(ctx context.Context, bucket, key, uploadID string) error {
+	_, err := a.client.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
+		Bucket:   aws.String(bucket),
+		Key:      aws.String(key),
+		UploadId: aws.String(uploadID),
+	})
+	return err
+}
+
 // Ensure S3Adapter implements ObjectStorage at compile time.
 var _ interface{ PutObject(context.Context, string, string, []byte, string) error } = (*S3Adapter)(nil)
 

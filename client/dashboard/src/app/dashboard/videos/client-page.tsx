@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "@/components/ui/table";
 import { VideoJobRow } from "@/components/dashboard/VideoJobRow";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useApi } from "@/lib/api-client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Video } from "@/lib/types";
+import { useAuth } from "@clerk/nextjs";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +28,21 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
   const { toast } = useToast();
   const api = useApi();
   const queryClient = useQueryClient();
+  const { getToken } = useAuth();
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.motionmesh.co.in";
+
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    try {
+      const token = await getToken();
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    } catch {
+      return {};
+    }
+  }, [getToken]);
+
+  // Builds absolute API URL for raw fetch multipart calls
+  const apiUrl = (path: string) => `${API_BASE}${path}`;
 
   const { data: serverVideos, isError, isLoading, isRefetching } = useQuery({
     queryKey: ["videos"],
@@ -64,21 +80,28 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
     refetchInterval: 10000,
   });
 
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Thresholds
+  const PART_SIZE = 8 * 1024 * 1024; // 8 MiB per part
+  const MULTIPART_THRESHOLD = 5 * 1024 * 1024; // use multipart above 5 MiB
+  const MAX_CONCURRENT_PARTS = 4; // parallel S3 PUT requests
+
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    e.target.value = ""; 
+    e.target.value = "";
 
     setIsUploading(true);
+    setUploadProgress(0);
     toast({ title: "Uploading…", description: `Starting upload for "${file.name}"` });
 
     try {
+      // 1. Initiate video record + get video ID
       const initRes = await api.POST("/v1/videos", {
         body: {
           filename: file.name,
           size_bytes: file.size,
-          bucket_id: process.env.NEXT_PUBLIC_MOTIONMESH_BUCKET_ID || "",
-          transcode_bucket_id: process.env.NEXT_PUBLIC_MOTIONMESH_TRANSCODE_BUCKET_ID || "",
         } as any,
       });
 
@@ -87,28 +110,94 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
       }
 
       const { video: newVideo, upload_url } = initRes.data as any;
+      const videoId = newVideo.id;
 
-      const uploadRes = await fetch(upload_url, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type || "video/mp4",
-        },
-        body: file,
-      });
+      if (file.size <= MULTIPART_THRESHOLD) {
+        // ── Small file: single presigned PUT ─────────────────────────────────
+        const uploadRes = await fetch(upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": file.type || "video/mp4" },
+          body: file,
+        });
+        if (!uploadRes.ok) throw new Error(`S3 upload failed: ${uploadRes.statusText}`);
+        setUploadProgress(90);
 
-      if (!uploadRes.ok) {
-        throw new Error(`S3 upload failed: ${uploadRes.statusText}`);
+        await api.POST("/v1/videos/{id}/finalize-upload" as any, {
+          params: { path: { id: videoId } },
+        });
+      } else {
+        // ── Large file: parallel multipart S3 upload ──────────────────────────
+        // 1. Create multipart upload
+        const createRes = await fetch(
+          apiUrl(`/v1/videos/${videoId}/multipart-create?content_type=${encodeURIComponent(file.type || "video/mp4")}`),
+          { method: "POST", headers: await getAuthHeaders() }
+        );
+        if (!createRes.ok) throw new Error("Failed to create multipart upload");
+        const { upload_id: uploadId } = await createRes.json();
+
+        // 2. Split file into parts and get presigned URLs for all of them
+        const totalParts = Math.ceil(file.size / PART_SIZE);
+        const partNumbers = Array.from({ length: totalParts }, (_, i) => i + 1);
+
+        const partsRes = await fetch(apiUrl(`/v1/videos/${videoId}/multipart-parts`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
+          body: JSON.stringify({ upload_id: uploadId, part_numbers: partNumbers }),
+        });
+        if (!partsRes.ok) throw new Error("Failed to get part URLs");
+        const { urls } = await partsRes.json() as { urls: Record<string, string> };
+
+        // 3. Upload parts in parallel batches
+        let uploadedParts = 0;
+        const completedParts: { part_number: number; etag: string }[] = [];
+
+        const uploadPart = async (partNumber: number): Promise<void> => {
+          const start = (partNumber - 1) * PART_SIZE;
+          const end = Math.min(start + PART_SIZE, file.size);
+          const chunk = file.slice(start, end);
+          const presignedUrl = urls[String(partNumber)];
+
+          const res = await fetch(presignedUrl, {
+            method: "PUT",
+            body: chunk,
+          });
+          if (!res.ok) throw new Error(`Part ${partNumber} upload failed: ${res.statusText}`);
+
+          const etag = res.headers.get("ETag") || res.headers.get("etag") || "";
+          completedParts.push({ part_number: partNumber, etag });
+          uploadedParts++;
+          setUploadProgress(Math.round((uploadedParts / totalParts) * 85));
+        };
+
+        // Run in batches of MAX_CONCURRENT_PARTS
+        for (let i = 0; i < partNumbers.length; i += MAX_CONCURRENT_PARTS) {
+          const batch = partNumbers.slice(i, i + MAX_CONCURRENT_PARTS);
+          await Promise.all(batch.map(uploadPart));
+        }
+
+        setUploadProgress(88);
+
+        // 4. Complete multipart upload — sorts parts by number before sending
+        completedParts.sort((a, b) => a.part_number - b.part_number);
+        const completeRes = await fetch(apiUrl(`/v1/videos/${videoId}/multipart-complete`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
+          body: JSON.stringify({ upload_id: uploadId, parts: completedParts }),
+        });
+        if (!completeRes.ok) {
+          // Abort on failure so S3 doesn't accumulate orphaned parts
+          await fetch(apiUrl(`/v1/videos/${videoId}/multipart-abort`), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...(await getAuthHeaders()) },
+            body: JSON.stringify({ upload_id: uploadId }),
+          });
+          throw new Error("Failed to complete multipart upload");
+        }
       }
 
-      const finalizeRes = await api.POST("/v1/videos/{id}/finalize-upload" as any, {
-        params: { path: { id: newVideo.id } }
-      });
-
-      if (finalizeRes.error || !finalizeRes.response.ok) {
-        throw new Error("Failed to finalize upload");
-      }
-
+      setUploadProgress(100);
       queryClient.setQueryData(["videos"], (old: Video[] | undefined) => [newVideo, ...(old ?? [])]);
+      queryClient.invalidateQueries({ queryKey: ["videos"] });
       toast({ title: "Upload complete", description: `"${file.name}" is queued for processing.` });
       setIsUploadDialogOpen(false);
     } catch (err: any) {
@@ -116,6 +205,7 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
       toast({ title: "Upload failed", description: err?.message ?? "Unexpected error", variant: "destructive" });
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -148,8 +238,19 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
                 className="w-full bg-accent-motion text-bg-base hover:bg-accent-motion/90"
               >
                 <UploadCloud className={`mr-2 h-4 w-4 ${isUploading ? "animate-pulse" : ""}`} />
-                {isUploading ? "Uploading…" : "Select File & Upload"}
+                {isUploading ? `Uploading… ${uploadProgress}%` : "Select File & Upload"}
               </Button>
+              {isUploading && uploadProgress > 0 && (
+                <div className="space-y-1">
+                  <div className="h-2 w-full rounded-full bg-bg-surface-raised overflow-hidden">
+                    <div
+                      className="h-full bg-accent-motion rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-text-muted text-center">{uploadProgress}% uploaded</p>
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>

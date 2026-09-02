@@ -45,6 +45,11 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/{id}/transcode", h.HandleCreateTranscodeJob)
 	// HLS proxy: serves .m3u8 playlists and .ts segments from S3, solving CORS/auth
 	r.Get("/{id}/hls/*", h.HandleHLSProxy)
+	// Multipart upload — client uses these for parallel chunked S3 PUT
+	r.Post("/{id}/multipart-create", h.HandleMultipartCreate)
+	r.Post("/{id}/multipart-parts", h.HandleMultipartPresignParts)
+	r.Post("/{id}/multipart-complete", h.HandleMultipartComplete)
+	r.Post("/{id}/multipart-abort", h.HandleMultipartAbort)
 }
 
 func (h *Handler) HandleListVideos(w http.ResponseWriter, r *http.Request) {
@@ -633,4 +638,150 @@ func (h *Handler) getPhysicalBucketName(ctx context.Context, accountID string, b
 		}
 	}
 	return h.bucketID
+}
+
+// ─── Multipart upload handlers ────────────────────────────────────────────────
+// These four endpoints let the browser upload large files directly to S3 in
+// parallel parts (5 MiB each) without routing any payload bytes through the API.
+
+// HandleMultipartCreate asks S3 to start a multipart upload and returns the
+// upload_id the client must pass to every subsequent part request.
+func (h *Handler) HandleMultipartCreate(w http.ResponseWriter, r *http.Request) {
+	acc, ok := r.Context().Value(auth.AccountContextKey).(*models.Account)
+	if !ok || acc == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	video, err := h.svc.GetVideo(r.Context(), id, acc.ID)
+	if err != nil || video == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, video.BucketID)
+	contentType := r.URL.Query().Get("content_type")
+	if contentType == "" {
+		contentType = "video/mp4"
+	}
+	uploadID, err := h.storage.CreateMultipartUpload(r.Context(), bucketName, video.ObjectKey, contentType)
+	if err != nil {
+		logger.New().Error("create multipart: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"upload_id": uploadID})
+}
+
+// HandleMultipartPresignParts returns presigned PUT URLs for a list of part numbers.
+// Body: {"upload_id":"...","part_numbers":[1,2,3,...]}
+func (h *Handler) HandleMultipartPresignParts(w http.ResponseWriter, r *http.Request) {
+	acc, ok := r.Context().Value(auth.AccountContextKey).(*models.Account)
+	if !ok || acc == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	video, err := h.svc.GetVideo(r.Context(), id, acc.ID)
+	if err != nil || video == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	var req struct {
+		UploadID    string  `json:"upload_id"`
+		PartNumbers []int32 `json:"part_numbers"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UploadID == "" {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, video.BucketID)
+	urls := make(map[string]string, len(req.PartNumbers))
+	for _, pn := range req.PartNumbers {
+		url, err := h.storage.PresignUploadPart(r.Context(), bucketName, video.ObjectKey, req.UploadID, pn)
+		if err != nil {
+			logger.New().Error("presign part %d: %v", pn, err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		urls[strconv.Itoa(int(pn))] = url
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{"urls": urls})
+}
+
+// HandleMultipartComplete calls S3 CompleteMultipartUpload, triggers transcode.
+// Body: {"upload_id":"...","parts":[{"part_number":1,"etag":"\"abc\""},...] }
+func (h *Handler) HandleMultipartComplete(w http.ResponseWriter, r *http.Request) {
+	acc, ok := r.Context().Value(auth.AccountContextKey).(*models.Account)
+	if !ok || acc == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	video, err := h.svc.GetVideo(r.Context(), id, acc.ID)
+	if err != nil || video == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	var req struct {
+		UploadID string `json:"upload_id"`
+		Parts    []struct {
+			PartNumber int32  `json:"part_number"`
+			ETag       string `json:"etag"`
+		} `json:"parts"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UploadID == "" {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, video.BucketID)
+	parts := make([]storage.CompletedPart, len(req.Parts))
+	for i, p := range req.Parts {
+		parts[i] = storage.CompletedPart{PartNumber: p.PartNumber, ETag: p.ETag}
+	}
+	if err := h.storage.CompleteMultipartUpload(r.Context(), bucketName, video.ObjectKey, req.UploadID, parts); err != nil {
+		logger.New().Error("complete multipart: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	// Record object + trigger transcode
+	_ = h.bucketSvc.UpsertObjects(r.Context(), []models.BucketObject{{
+		BucketID:    video.BucketID,
+		Key:         video.ObjectKey,
+		SizeBytes:   int64(video.SizeBytes),
+		ContentType: "video/mp4",
+	}})
+	if err := h.transcodeSvc.TriggerJob(r.Context(), video); err != nil {
+		logger.New().Error("trigger transcode after multipart: %v", err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"status": "complete"})
+}
+
+// HandleMultipartAbort cancels a stalled multipart upload.
+// Body: {"upload_id":"..."}
+func (h *Handler) HandleMultipartAbort(w http.ResponseWriter, r *http.Request) {
+	acc, ok := r.Context().Value(auth.AccountContextKey).(*models.Account)
+	if !ok || acc == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	id := chi.URLParam(r, "id")
+	video, err := h.svc.GetVideo(r.Context(), id, acc.ID)
+	if err != nil || video == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	var req struct {
+		UploadID string `json:"upload_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.UploadID == "" {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, video.BucketID)
+	_ = h.storage.AbortMultipartUpload(r.Context(), bucketName, video.ObjectKey, req.UploadID)
+	w.WriteHeader(http.StatusNoContent)
 }
