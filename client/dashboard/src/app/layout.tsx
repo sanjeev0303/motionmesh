@@ -27,6 +27,9 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "MotionMesh Dashboard",
   description: "Manage your video transcoding and streaming",
+  icons: {
+    icon: "/logo.png",
+  }
 };
 
 export default function RootLayout({
