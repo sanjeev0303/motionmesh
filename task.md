@@ -160,3 +160,4 @@
   - [x] Restarted the client docker container to apply the new API key.
 - [x] Correct the storage logic within the backend worker services (uploader/storage.go) to ensure transcoded objects are accurately routed to the TranscodeBucketID rather than defaulting to the standard bucket.
 - [x] Fix Dashboard API Keys state logic to integrate with real Go backend, removing simulation.
+- [x] Implement Hybrid SSR + React Query caching strategies for remaining dashboard routes (Buckets, Videos, Media-Convert, Usage, Billing, Activity) to prevent flickering and stale data.
