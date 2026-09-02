@@ -2,6 +2,7 @@ package videos
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -146,7 +147,8 @@ func (h *Handler) HandleDeleteVideo(w http.ResponseWriter, r *http.Request) {
 			if video.TranscodeBucketID != nil {
 				bucket = *video.TranscodeBucketID
 			}
-			err := h.storage.DeleteObject(r.Context(), bucket, key)
+			bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, bucket)
+			err := h.storage.DeleteObject(r.Context(), bucketName, key)
 			if err != nil {
 				logger.New().Error("failed to delete storage key %s for video %s: %v", key, id, err)
 			}
@@ -222,7 +224,8 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	uploadURL, err := h.storage.GetPresignedUploadURL(r.Context(), bucketID, objectKey, "video/mp4")
+	bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, bucketID)
+	uploadURL, err := h.storage.GetPresignedUploadURL(r.Context(), bucketName, objectKey, "video/mp4")
 	if err != nil {
 		logger.New().Error("generate upload url: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -267,7 +270,8 @@ func (h *Handler) HandleProxyUpload(w http.ResponseWriter, r *http.Request) {
 
 	body := http.MaxBytesReader(w, r.Body, maxSize)
 
-	if err := h.storage.PutObjectStream(r.Context(), video.BucketID, video.ObjectKey, body, size, contentType); err != nil {
+	bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, video.BucketID)
+	if err := h.storage.PutObjectStream(r.Context(), bucketName, video.ObjectKey, body, size, contentType); err != nil {
 		logger.New().Error("proxy upload stream: %v", err)
 		http.Error(w, "storage upload failed", http.StatusInternalServerError)
 		return
@@ -355,7 +359,8 @@ func (h *Handler) HandleGetThumbnail(w http.ResponseWriter, r *http.Request) {
 	if video.TranscodeBucketID != nil {
 		bucket = *video.TranscodeBucketID
 	}
-	url, err := h.storage.GetPresignedURL(r.Context(), bucket, *video.ThumbnailKey)
+	bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, bucket)
+	url, err := h.storage.GetPresignedURL(r.Context(), bucketName, *video.ThumbnailKey)
 	if err != nil {
 		logger.New().Error("presign thumbnail: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -431,7 +436,8 @@ func (h *Handler) HandleGetPlaybackInfo(w http.ResponseWriter, r *http.Request) 
 		if video.TranscodeBucketID != nil {
 			bucket = *video.TranscodeBucketID
 		}
-		url, _ := h.storage.GetPresignedURL(r.Context(), bucket, capKey)
+		bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, bucket)
+		url, _ := h.storage.GetPresignedURL(r.Context(), bucketName, capKey)
 		subtitleUrl = url
 	}
 
@@ -441,7 +447,8 @@ func (h *Handler) HandleGetPlaybackInfo(w http.ResponseWriter, r *http.Request) 
 		if video.TranscodeBucketID != nil {
 			bucket = *video.TranscodeBucketID
 		}
-		url, _ := h.storage.GetPresignedURL(r.Context(), bucket, *video.SpriteKey)
+		bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, bucket)
+		url, _ := h.storage.GetPresignedURL(r.Context(), bucketName, *video.SpriteKey)
 		timelineSpritesUrl = url
 	}
 
@@ -484,7 +491,8 @@ func (h *Handler) HandleHLSProxy(w http.ResponseWriter, r *http.Request) {
 		if video.TranscodeBucketID != nil {
 			bucket = *video.TranscodeBucketID
 		}
-		body, err := h.storage.GetObjectStream(r.Context(), bucket, vttKey)
+		bucketName := h.getPhysicalBucketName(r.Context(), video.AccountID, bucket)
+		body, err := h.storage.GetObjectStream(r.Context(), bucketName, vttKey)
 		if err != nil {
 			logger.New().Error("hls proxy: vtt %s: %v", vttKey, err)
 			http.Error(w, "not found", http.StatusNotFound)
@@ -513,7 +521,8 @@ func (h *Handler) HandleHLSProxy(w http.ResponseWriter, r *http.Request) {
 	if video.TranscodeBucketID != nil {
 		bucket = *video.TranscodeBucketID
 	}
-	body, err := h.storage.GetObjectStream(r.Context(), bucket, s3Key)
+	bucketName := h.getPhysicalBucketName(r.Context(), video.AccountID, bucket)
+	body, err := h.storage.GetObjectStream(r.Context(), bucketName, s3Key)
 	if err != nil {
 		logger.New().Error("hls proxy: get object %s: %v", s3Key, err)
 		http.Error(w, "not found", http.StatusNotFound)
@@ -612,4 +621,16 @@ func getProxyBaseURL(r *http.Request) string {
 	}
 
 	return fmt.Sprintf("%s://%s", scheme, host)
+}
+
+func (h *Handler) getPhysicalBucketName(ctx context.Context, accountID string, bucketID string) string {
+	buckets, err := h.bucketSvc.ListBuckets(ctx, accountID)
+	if err == nil {
+		for _, b := range buckets {
+			if b.ID == bucketID {
+				return b.Name
+			}
+		}
+	}
+	return h.bucketID
 }
