@@ -80,10 +80,27 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 	if err := h.db.QueryRowContext(ctx, "SELECT bucket_id FROM videos WHERE id = $1::uuid", videoID).Scan(&bucketID); err != nil {
 		return fmt.Errorf("query bucket_id: %w", err)
 	}
-	targetBucketID := bucketID
-	if transcodeBucketID != nil && *transcodeBucketID != "" {
-		targetBucketID = *transcodeBucketID
+
+	// Resolve physical S3 bucket names from UUID logical IDs stored in the DB.
+	sourceBucketName, err := h.getPhysicalBucketName(ctx, bucketID)
+	if err != nil {
+		h.log.Error("cannot resolve source bucket name for %s: %v — falling back to raw ID", bucketID, err)
+		sourceBucketName = bucketID
 	}
+
+	// Transcode output goes to a separate bucket when configured.
+	transcodeBucketName := sourceBucketName
+	if transcodeBucketID != nil && *transcodeBucketID != "" {
+		name, err := h.getPhysicalBucketName(ctx, *transcodeBucketID)
+		if err != nil {
+			h.log.Error("cannot resolve transcode bucket name for %s: %v — using source bucket", *transcodeBucketID, err)
+		} else {
+			transcodeBucketName = name
+		}
+	}
+
+	targetBucketID := transcodeBucketName // physical name for S3 calls
+	_ = transcodeBucketID                 // keep original pointer for uploader signatures
 
 	var uploadedObjects []uploader.UploadedFile
 	var objMu sync.Mutex
@@ -96,9 +113,9 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 	defer os.RemoveAll(tmpDir)
 
 	h.log.Info("Downloading source for video: %s", videoID)
-	// 2. Download source
+	// 2. Download source using physical bucket name
 	sourcePath := filepath.Join(tmpDir, "source.mp4")
-	if err := h.downloadSource(ctx, sourceObjectKey, sourcePath, &bucketID); err != nil {
+	if err := h.downloadSource(ctx, sourceObjectKey, sourcePath, &sourceBucketName); err != nil {
 		return h.failJob(ctx, videoID, fmt.Errorf("download source: %w", err))
 	}
 
@@ -143,7 +160,7 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 		if watermark != nil {
 			h.log.Info("Downloading watermark for video: %s", videoID)
 			wmPath := filepath.Join(tmpDir, "watermark.png")
-			if err := h.downloadSource(ctx, watermark.AssetObjectKey, wmPath, &bucketID); err == nil {
+			if err := h.downloadSource(ctx, watermark.AssetObjectKey, wmPath, &sourceBucketName); err == nil {
 				watermark.AssetObjectKey = wmPath
 			} else {
 				h.log.Error("failed to download watermark %s: %v", watermark.AssetObjectKey, err)
@@ -171,14 +188,13 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 			}
 
 			// Generate Master Playlist
-			_, err = packaging.GenerateMasterPlaylist(egCtx, renditions, []string{"en"}, tmpDir) // stub for english
+			_, err = packaging.GenerateMasterPlaylist(egCtx, renditions, []string{"en"}, tmpDir)
 			if err != nil {
 				return fmt.Errorf("master playlist: %w", err)
 			}
 
-			h.log.Info("Uploading HLS for video: %s", videoID)
-			// Upload entire HLS directory
-			files, err := h.uploader.UploadHLS(egCtx, videoID, tmpDir, transcodeBucketID)
+			h.log.Info("Uploading HLS for video: %s to bucket: %s", videoID, targetBucketID)
+			files, err := h.uploader.UploadHLS(egCtx, videoID, tmpDir, targetBucketID)
 			if err != nil {
 				return fmt.Errorf("upload HLS: %w", err)
 			}
@@ -223,7 +239,7 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 
 		h.log.Info("Uploading VTT for video: %s", videoID)
 		// Upload VTT
-		vttFile, err := h.uploader.UploadCaption(egCtx, videoID, "en", transcribeRes.VTT, transcodeBucketID)
+		vttFile, err := h.uploader.UploadCaption(egCtx, videoID, "en", transcribeRes.VTT, targetBucketID)
 		if err != nil {
 			_ = h.updateCaptionsStatus(egCtx, videoID, "failed")
 			h.log.Error("upload vtt: %v", err)
@@ -282,7 +298,7 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 				h.log.Error("generate sprite: %v", err)
 				return nil
 			}
-			f, err := h.uploader.UploadSprite(tgCtx, videoID, sp, transcodeBucketID)
+			f, err := h.uploader.UploadSprite(tgCtx, videoID, sp, targetBucketID)
 			if err != nil {
 				h.log.Error("upload sprite: %v", err)
 				return nil
@@ -297,7 +313,7 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 				h.log.Error("generate poster: %v", err)
 				return nil
 			}
-			f, err := h.uploader.UploadPoster(tgCtx, videoID, po, transcodeBucketID)
+			f, err := h.uploader.UploadPoster(tgCtx, videoID, po, targetBucketID)
 			if err != nil {
 				h.log.Error("upload poster: %v", err)
 				return nil
@@ -312,7 +328,7 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 				h.log.Error("generate preview: %v", err)
 				return nil
 			}
-			f, err := h.uploader.UploadPreview(tgCtx, videoID, pr, transcodeBucketID)
+			f, err := h.uploader.UploadPreview(tgCtx, videoID, pr, targetBucketID)
 			if err != nil {
 				h.log.Error("upload preview: %v", err)
 				return nil
@@ -575,7 +591,8 @@ func (h *Handler) saveRenditions(ctx context.Context, videoID string, renditions
 	for i, r := range renditions {
 		base := i * 3
 		placeholders[i] = fmt.Sprintf("(gen_random_uuid(), $%d::uuid, $%d::text, $%d::text)", base+1, base+2, base+3)
-		args = append(args, videoID, r.Label, fmt.Sprintf("videos/%s/hls/stream_%s.m3u8", videoID, r.Label))
+		// Key matches the parallel-encode path: videos/{id}/hls/{Label}/stream.m3u8
+		args = append(args, videoID, r.Label, fmt.Sprintf("videos/%s/hls/%s/stream.m3u8", videoID, r.Label))
 	}
 	_, err := h.db.ExecContext(ctx,
 		"INSERT INTO renditions (id, video_id, resolution, object_key) VALUES "+strings.Join(placeholders, ",")+
@@ -641,4 +658,15 @@ func extractAudio(ctx context.Context, inputPath, outputPath string) error {
 		return fmt.Errorf("ffmpeg extract audio: %w", err)
 	}
 	return nil
+}
+
+// getPhysicalBucketName resolves a logical bucket UUID to its physical S3 name
+// stored in the buckets table. Falls back to the raw bucketID on error.
+func (h *Handler) getPhysicalBucketName(ctx context.Context, bucketID string) (string, error) {
+	var name string
+	err := h.db.QueryRowContext(ctx, "SELECT name FROM buckets WHERE id = $1::uuid", bucketID).Scan(&name)
+	if err != nil {
+		return "", fmt.Errorf("bucket %s: %w", bucketID, err)
+	}
+	return name, nil
 }
