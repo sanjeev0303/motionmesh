@@ -179,9 +179,18 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 
 	objectKey := acc.ID + "/videos/" + req.Filename
 
-	bucketID := h.bucketID
+	var bucketID string
 	if req.BucketID != nil && *req.BucketID != "" {
 		bucketID = *req.BucketID
+	} else {
+		buckets, err := h.bucketSvc.ListBuckets(r.Context(), acc.ID)
+		if err == nil && len(buckets) > 0 {
+			bucketID = buckets[0].ID
+		} else {
+			logger.New().Error("no buckets found for account %s", acc.ID)
+			http.Error(w, "No storage bucket configured", http.StatusBadRequest)
+			return
+		}
 	}
 	
 	var transcodeBucketID *string
