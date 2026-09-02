@@ -1,163 +1,20 @@
-# Tasks
-
-- [x] Phase 0 — Repo skeleton & local dev loop
-  - [x] Create directory tree
-  - [x] Create go.work, go.work.sum
-  - [x] Create docker-compose.yml
-  - [x] Create root Makefile
-  - [x] Create .env.example
-  - [x] Create .gitignore and .editorconfig
-  - [x] Create server/api with stub main.go and go.mod
-  - [x] Create server/worker with stub main.go and go.mod
-  - [x] Create server/shared with stub files and go.mod
-  - [x] Create server/captions-sidecar with stub FastAPI and Dockerfile
-  - [x] Verify make dev brings up all four services cleanly
-  - [x] Verify go build ./... succeeds across Go modules from repo root
-- [x] Phase 1 — Auth & API keys (server/api/internal/auth)
-- [x] Phase 2 — Storage API (server/api/internal/storage)
-- [x] Phase 3 — Transcode pipeline
-- [x] Phase 4 — <MotionmeshPlayer>
-  - [x] Check Go API for playback URL endpoint
-  - [x] Add client.videos.getPlaybackUrl() in SDK (derive from object_key or dedicated endpoint)
-  - [x] Replace fake player div in videos/[id]/page.tsx with <MotionmeshPlayer>
-- [x] Phase 5 — Dashboard
-  - [x] npm run build passes in dashboard with zero TS errors
-- [x] Phase 6 — SDKs
-- [x] Phase 7 — Hardening
-- [x] Create context.md with project details
-- [x] Switch Anthropic to Gemini in captions-sidecar/app/transcribe.py
-- [x] Resolve `google.generativeai` import error in captions-sidecar
-- [x] Fix 500 error on /v1/buckets/{id}/objects by aligning database schema with Go models
-- [x] Phase 8 — Clean up root directory by removing unused files (`cors.json`, `go.work.bak`)
-- [x] Configure server-specific .gitignore
-- [x] Remove exposed secrets from git history and push to origin
-- [x] Configure NPM registry authentication token
-- [x] Add NPM package links to README.md
-- [x] Redesign README.md as enterprise-grade landing page
-- [x] Increase logo size and apply branding color to README heading
-- [x] Implement client.cdn.* namespace on @motionmesh/sdk (addDomain, listDomains, getDomain, deleteDomain, getStats, waitUntilActive)
-- [x] Add PlanRequiredError typed exception for 403 plan-gate responses
-- [x] Wire cdn.* dispatch cases into processRequest.ts
-- [x] Export CDNDomain, CDNStats, PlanRequiredError from SDK public surface
-- [x] Extract CDN into standalone @motionmesh/cdn package (sdk/js/packages/cdn)
-  - [x] client.ts — browser-safe proxy-routed functions
-  - [x] server.ts — direct API + handleCDNRequest dispatch handler
-  - [x] errors.ts — PlanRequiredError + handleCDNError
-  - [x] types.ts — CDNDomain, CDNStats
-  - [x] Builds: ESM + CJS + DTS for both index and server entries
-- [x] Strip cdn.* from @motionmesh/sdk (processRequest, client/index, types, exports)
-- [x] Remove all CDN concepts and code from application
-  - [x] Delete `sdk/js/packages/cdn` package
-  - [x] Remove CDN handlers, routes, service, repository, and models from Go backend
-  - [x] Delete `server/cdn-worker`
-  - [x] Delete `server/scripts/migrations/006_cdn_domains.sql`
-  - [x] Remove CDN references from OpenAPI spec, shared config, and `.env.example`
-  - [x] Remove CDN pages, docs, navigation links, and metrics from dashboard
-  - [x] Remove CDN sections from README.md and SDK docs
-- [x] Analyze server connections (Database, Redis, S3, NATS)
-- [x] Implement AWS production infrastructure for motionmesh.co.in
-  - [x] VPC module: public/private subnets x2 AZ, IGW, NAT GW, route tables
-  - [x] Security module: restrictive SGs using SG-to-SG references (ALB, API, dashboard, worker, NATS, captions, Aurora, Redis)
-  - [x] S3 module: encrypted, versioned, block-public-access, CORS
-  - [x] IAM module: EC2 instance profile for S3 + SSM + CloudWatch
-  - [x] Aurora module: PostgreSQL 16, encrypted, backups, deletion protection, enhanced monitoring
-  - [x] ElastiCache module: Redis multi-AZ, encrypted at rest, CloudWatch logs
-  - [x] NATS module: EC2 with JetStream persistent storage, systemd restart
-  - [x] ALB module: HTTP→HTTPS redirect, TLS 1.3, host-based routing (api.motionmesh.co.in / motionmesh.co.in)
-  - [x] ec2-service module: generic module for API, worker, dashboard, captions
-  - [x] ACM certificate with DNS validation via Route 53
-  - [x] Route 53 records: apex, www, api → ALB alias
-  - [x] User-data templates: api, worker, captions, dashboard, nats
-  - [x] Production main.tf, variables.tf, outputs.tf, locals.tf, data.tf
-  - [x] terraform.tfvars.example with safe placeholders
-  - [x] Application changes: S3 IAM role fallback when STORAGE_ACCESS_KEY empty
-  - [x] Application changes: CORS_ALLOWED_ORIGINS env var for production domains
-  - [x] Dashboard Dockerfile: NEXT_PUBLIC_API_URL as build arg (baked at build time)
-  - [x] Updated server/.env.example with production documentation
-  - [x] Updated .gitignore with Terraform secret/state files
-- [x] Fix CORS policy issue blocking motionmesh-opal.vercel.app from accessing api.motionmesh.co.in
-  - [x] Update locals.tf to include vercel app URL in cors_allowed_origins
-  - [x] Modify api user-data template to accept cors_allowed_origins variable
-  - [x] Apply Terraform changes to update API container environment variables
-- [x] Fix 401 Unauthorized errors in production API
-  - [x] Run PostgreSQL schema migrations (000_init_schema to 009_account_balance) against the Aurora database
-  - [x] Restart the API EC2 service to connect to the migrated schema
-- [x] Add MOTIONMESH_API_KEY to dashboard deployment
-  - [x] Add MOTIONMESH_API_KEY env variable in dashboard.sh.tftpl
-  - [x] Redeploy dashboard EC2 instance with Terraform
-- [x] Fix SDK 404 error during upload on Dashboard
-  - [x] Inject MOTIONMESH_BASE_URL into Dashboard Docker container so SDK targets the API URL instead of the Dashboard URL
-  - [x] Redeploy Dashboard EC2 via Terraform
-- [x] Fix Dashboard Upload 500 API Error
-  - [x] Identify missing `transcode_bucket_id` column in `videos` table in the production Aurora database.
-  - [x] Run remaining SQL migrations from `infra/postgres/migrations/` on the API instance via `psql`.
-  - [x] Restart the API Docker container to clear any cached queries.
-- [x] Fix GET /v1/videos 500 error
-  - [x] Identify missing `captions_status` column (from `005_captions_status.sql`).
-  - [x] Run remaining SQL migrations (`003` to `005`) on the API instance via `psql`.
-  - [x] Restart the API Docker container to clear schema caches.
-- [x] Fix Video Transcoding Failures
-  - [x] Analyze `worker` logs: Found missing Postgres unique constraint error for renditions.
-  - [x] Run `003_renditions_unique.sql` manually on the Aurora database to resolve the worker constraint crash.
-  - [x] Analyze `captions-sidecar` logs: Found missing `GEMINI_API_KEY` warning causing chapters to skip.
-  - [x] Update `main.tf` and `captions.sh.tftpl` to pass the `gemini_api_key` into the Docker container.
-  - [x] Re-run `terraform apply` to replace the Captions EC2 instance with the updated configuration.
-- [ ] Debug Clerk JWT Verification Error
-  - [x] Modify `service.go` in the Go API to expose the underlying `jwt.Verify` error message.
-  - [x] Deploy the updated Go API to the production EC2 instance.
-  - [ ] Await user retry to capture the exact JWT verification error in the logs.
-- [ ] Debug Clerk JWT Verification Error
-  - [x] Modify `service.go` in the Go API to expose the underlying `jwt.Verify` error message.
-  - [x] Deploy the updated Go API to the production EC2 instance.
-  - [ ] Await user retry to capture the exact JWT verification error in the logs.
-  - [x] Analyze `worker` logs: Found connection error to `captions-sidecar` because its IP changed when recreated, and found missing `size_bytes` column in `objects` table.
-  - [x] Add `size_bytes` to `objects` table manually in the production Aurora database.
-  - [x] Update worker instance configuration with the new `captions-sidecar` private IP and restart the worker.
-- [ ] Debug Dashboard Upload Failure
-  - [x] Check API logs: Confirmed the `POST` request never reached the backend API.
-  - [x] Analyze browser error: Identified `net::ERR_NETWORK_CHANGED` as a local internet connection drop.
-- [ ] Migrate `captions-sidecar` to HuggingFace
-  - [x] Replace `langchain-google-genai` with `langchain-huggingface` in `pyproject.toml`.
-  - [x] Update `transcribe.py` to use `HuggingFaceEndpoint` and `ChatHuggingFace`.
-  - [x] Update Terraform configurations and `.env` files to replace `GEMINI_API_KEY` with `HUGGINGFACE_API_KEY`.
-  - [x] Inject the new Hugging Face API key via Terraform and deploy the new `captions-sidecar` instance.
-  - [x] Update worker configuration with the new sidecar IP.
-- [ ] Fix bucket deletion logic from Dashboard UI
-  - [x] Identified that clicking "Delete Bucket" in UI did not call any backend API (it only showed a toast).
-  - [x] Implemented `DeleteBucket` method in `server/api/internal/buckets/postgres/repository.go`.
-  - [x] Added `r.Delete("/{id}", h.deleteBucket)` route and logic in `server/api/internal/buckets/handler.go`.
-  - [x] Updated the `client/dashboard/src/app/dashboard/buckets/[id]/page.tsx` to execute a `DELETE` fetch request on the `handleDelete` click event.
-  - [x] Deployed the backend and frontend updates to EC2 (API and Dashboard instances).
-- [x] Fix Media Convert Re-triggering Flow
-  - [x] Analyzed video upload, transcoding, and streaming flow.
-  - [x] Identified that `TriggerJob` in the backend was silently ignoring jobs if they already existed in `transcode_jobs`, breaking the Media Convert UI "Create Job" button.
-  - [x] Modified `TriggerJob` to check if a job exists, update its status to `queued` if it's not currently running, and publish the job to NATS.
-  - [x] Committed changes and deployed the updated API via SSM.
-- [x] Fix Bucket Deletion Storage Leak
-  - [x] Analyzed bucket deletion flow and discovered that `DeleteBucket` removed the bucket and object references from the PostgreSQL database, but left the actual files orphaned in the AWS S3 storage.
-  - [x] Modified the bucket service and repository to query all tracked objects within the bucket before deletion.
-  - [x] Implemented logic to call `storage.DeleteObject` for every object in the bucket, ensuring the physical files are removed from S3.
-  - [x] Committed and pushed the changes, and deployed the API to EC2.
-- [x] Add Uploading Status to Dashboard Videos Page
-  - [x] Analyzed `client/dashboard/src/app/dashboard/videos/page.tsx` and identified the "Upload Video" buttons.
-  - [x] Modified both the main and empty-state "Upload Video" buttons to conditionally display "Uploading..." and disable themselves while a video is being uploaded to S3.
-  - [x] Committed the UI changes and deployed the `client` container to the Dashboard EC2 instance.
-- [x] Reduce Dashboard Video Upload Time (Direct-to-S3 Upload)
-  - [x] Analyzed `dashboardUpload.ts` and discovered that videos were being proxy-uploaded through the Go API server (`POST /v1/videos/{id}/upload`), which doubled the upload time and bandwidth consumption.
-  - [x] Added a `POST /v1/videos/{id}/finalize-upload` route to the API to update bucket tracking and trigger transcoding without accepting the video file itself.
-  - [x] Refactored `dashboardUpload.ts` to upload the video file directly to AWS S3 using the pre-signed `upload_url` (`PUT`) and then call the `finalize-upload` endpoint on success.
-  - [x] Committed the code changes and deployed the updated API and Dashboard services to EC2.
-- [x] Optimize Video Upload Strategy (Client-side Direct to S3)
-  - [x] Identified that the previous "Dashboard Upload" approach was still routing through the Next.js API server before reaching S3, causing a bottleneck.
-  - [x] Refactored `client/dashboard/src/app/dashboard/videos/page.tsx` to completely bypass the SDK and the Next.js API server for uploads.
-  - [x] The browser now fetches the S3 pre-signed URL directly from the Go API and uploads the video file straight to S3 (`PUT`), ensuring the absolute fastest upload speed and lowest latency possible.
-  - [x] Pushed the optimizations and deployed them to the EC2 instances.
-- [x] Analyze Dashboard Upload 408 Request Timeout Error
-  - [x] Identified that the 408 Request Timeout originated from the deprecated Next.js proxy route (`/api/motionmesh`) used by the old SDK `dashboardUpload` function.
-  - [x] Confirmed the dashboard EC2 instance was successfully updated to the direct-to-S3 upload logic, meaning the user's browser is utilizing a cached JavaScript bundle.
-- [x] Update MotionMesh API Key
-  - [x] Replaced the old API key with `mot_live_lzmn15u096hpy1jt43nm` in the Dashboard's `.env` configuration file locally and on the EC2 production instance.
-  - [x] Restarted the client docker container to apply the new API key.
-- [x] Correct the storage logic within the backend worker services (uploader/storage.go) to ensure transcoded objects are accurately routed to the TranscodeBucketID rather than defaulting to the standard bucket.
-- [x] Fix Dashboard API Keys state logic to integrate with real Go backend, removing simulation.
-- [x] Implement Hybrid SSR + React Query caching strategies for remaining dashboard routes (Buckets, Videos, Media-Convert, Usage, Billing, Activity) to prevent flickering and stale data.
+- [x] Investigate 500 error on video upload API
+- [x] Identify UUID parsing failure for physical bucket name fallback
+- [x] Add UUID validation logic to `handler.go`
+- [x] Deploy API fix to EC2 instance (re-deployed to bypass cached Docker layers)
+- [x] Fix CORS error on video upload: `buckets` table had stale names (`mango`, `mango-transcode-media`) pointing to non-existent S3 buckets
+- [x] Updated all 2 bucket rows to use correct physical S3 bucket name `motionmesh-production-196936049283` which has CORS configured for `https://motionmesh.co.in`
+- [x] feat(upload): parallel S3 multipart upload — 8MiB parts, 4 concurrent, with real-time progress bar
+- [x] Backend: added `CreateMultipartUpload`, `PresignUploadPart`, `CompleteMultipartUpload`, `AbortMultipartUpload` to `ObjectStorage` interface and `S3Adapter`
+- [x] API: 4 new signed routes (`multipart-create`, `multipart-parts`, `multipart-complete`, `multipart-abort`) — payload never touches API server
+- [x] Frontend: files ≤5MiB → single presigned PUT; files >5MiB → parallel multipart; progress bar shown in upload dialog
+- [x] Deployed to EC2 — API health confirmed ✅
+- [x] feat(transcode): parallel per-rendition encoding + full 8-rung ABR ladder + separate bucket isolation
+- [x] ABR ladder: 144p / 240p / 360p / 480p / 720p / 1080p / 1440p / 2160p — source height cap prevents upscaling
+- [x] FFmpeg: replaced single sequential multi-output pass with parallel goroutines (up to 4 concurrent renditions)
+- [x] Preset: veryfast → superfast (~20-30% faster encode); threads=2 per process caps RSS
+- [x] Worker: resolves physical S3 bucket names from buckets table UUID IDs (same fix applied as API)
+- [x] Bucket isolation: source video downloads from bucket_id; HLS/thumbs/captions upload to transcode_bucket_id
+- [x] Output path: each rendition in Label/stream.m3u8 + Label/seg*.ts; master.m3u8 URIs updated to match
+- [x] UploadHLS: WalkDir handles nested rendition dirs; 16 concurrent S3 workers (up from 8)
+- [x] Deployed motionmesh-worker as new systemd Docker service (was not previously running); both API + Worker up ✅

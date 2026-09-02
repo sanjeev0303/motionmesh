@@ -430,7 +430,7 @@ func (h *Handler) downloadSource(ctx context.Context, objectKey, outPath string,
 		body, err := store.GetObjectStream(dlCtx, *bucketID, objectKey)
 		if err != nil {
 			lastErr = err
-			h.log.Info("downloadSource: GetObjectStream failed (%d/%d): %v", i+1, maxRetries, err)
+			h.log.Info("downloadSource: GetObjectStream failed for bucket %s (%d/%d): %v", *bucketID, i+1, maxRetries, err)
 			continue
 		}
 
@@ -440,7 +440,7 @@ func (h *Handler) downloadSource(ctx context.Context, objectKey, outPath string,
 			return fmt.Errorf("create file: %w", err)
 		}
 
-		h.log.Info("downloadSource: streaming object %s (attempt %d/%d)", objectKey, i+1, maxRetries)
+		h.log.Info("downloadSource: streaming object %s from bucket %s (attempt %d/%d)", objectKey, *bucketID, i+1, maxRetries)
 
 		// Run io.Copy in a goroutine so dlCtx cancellation can interrupt it.
 		// Closing body forces the underlying TCP read to return immediately.
