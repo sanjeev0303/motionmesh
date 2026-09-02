@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/motionmesh/server/api/internal/auth"
 	"github.com/motionmesh/server/api/internal/buckets"
 	"github.com/motionmesh/server/api/internal/transcode"
@@ -181,8 +182,12 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 
 	var bucketID string
 	if req.BucketID != nil && *req.BucketID != "" {
-		bucketID = *req.BucketID
-	} else {
+		if _, err := uuid.Parse(*req.BucketID); err == nil {
+			bucketID = *req.BucketID
+		}
+	}
+	
+	if bucketID == "" {
 		buckets, err := h.bucketSvc.ListBuckets(r.Context(), acc.ID)
 		if err == nil && len(buckets) > 0 {
 			bucketID = buckets[0].ID
@@ -195,7 +200,9 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 	
 	var transcodeBucketID *string
 	if req.TranscodeBucketID != nil && *req.TranscodeBucketID != "" {
-		transcodeBucketID = req.TranscodeBucketID
+		if _, err := uuid.Parse(*req.TranscodeBucketID); err == nil {
+			transcodeBucketID = req.TranscodeBucketID
+		}
 	}
 
 	video := &models.Video{
