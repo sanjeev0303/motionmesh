@@ -140,7 +140,12 @@ func (h *Handler) HandleDeleteVideo(w http.ResponseWriter, r *http.Request) {
 
 	for _, key := range keysToDelete {
 		if key != "" {
-			err := h.storage.DeleteObject(r.Context(), key)
+			// Wait, the renditions/thumbnails are in transcodeBucketID if it exists, otherwise BucketID!
+			bucket := video.BucketID
+			if video.TranscodeBucketID != nil {
+				bucket = *video.TranscodeBucketID
+			}
+			err := h.storage.DeleteObject(r.Context(), bucket, key)
 			if err != nil {
 				logger.New().Error("failed to delete storage key %s for video %s: %v", key, id, err)
 			}
@@ -196,7 +201,7 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	uploadURL, err := h.storage.GetPresignedUploadURL(r.Context(), objectKey, "video/mp4")
+	uploadURL, err := h.storage.GetPresignedUploadURL(r.Context(), bucketID, objectKey, "video/mp4")
 	if err != nil {
 		logger.New().Error("generate upload url: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -241,7 +246,7 @@ func (h *Handler) HandleProxyUpload(w http.ResponseWriter, r *http.Request) {
 
 	body := http.MaxBytesReader(w, r.Body, maxSize)
 
-	if err := h.storage.PutObjectStream(r.Context(), video.ObjectKey, body, size, contentType); err != nil {
+	if err := h.storage.PutObjectStream(r.Context(), video.BucketID, video.ObjectKey, body, size, contentType); err != nil {
 		logger.New().Error("proxy upload stream: %v", err)
 		http.Error(w, "storage upload failed", http.StatusInternalServerError)
 		return
@@ -325,7 +330,11 @@ func (h *Handler) HandleGetThumbnail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, err := h.storage.GetPresignedURL(r.Context(), *video.ThumbnailKey)
+	bucket := video.BucketID
+	if video.TranscodeBucketID != nil {
+		bucket = *video.TranscodeBucketID
+	}
+	url, err := h.storage.GetPresignedURL(r.Context(), bucket, *video.ThumbnailKey)
 	if err != nil {
 		logger.New().Error("presign thumbnail: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -397,13 +406,21 @@ func (h *Handler) HandleGetPlaybackInfo(w http.ResponseWriter, r *http.Request) 
 	var subtitleUrl string
 	if video.CaptionsStatus == "ready" {
 		capKey := fmt.Sprintf("videos/%s/captions/en.vtt", video.ID)
-		url, _ := h.storage.GetPresignedURL(r.Context(), capKey)
+		bucket := video.BucketID
+		if video.TranscodeBucketID != nil {
+			bucket = *video.TranscodeBucketID
+		}
+		url, _ := h.storage.GetPresignedURL(r.Context(), bucket, capKey)
 		subtitleUrl = url
 	}
 
 	var timelineSpritesUrl string
 	if video.SpriteKey != nil {
-		url, _ := h.storage.GetPresignedURL(r.Context(), *video.SpriteKey)
+		bucket := video.BucketID
+		if video.TranscodeBucketID != nil {
+			bucket = *video.TranscodeBucketID
+		}
+		url, _ := h.storage.GetPresignedURL(r.Context(), bucket, *video.SpriteKey)
 		timelineSpritesUrl = url
 	}
 
@@ -442,7 +459,11 @@ func (h *Handler) HandleHLSProxy(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(segPath, ".vtt") {
 		lang := strings.TrimSuffix(filepath.Base(segPath), ".vtt")
 		vttKey := fmt.Sprintf("videos/%s/captions/%s.vtt", videoID, lang)
-		body, err := h.storage.GetObjectStream(r.Context(), vttKey)
+		bucket := video.BucketID
+		if video.TranscodeBucketID != nil {
+			bucket = *video.TranscodeBucketID
+		}
+		body, err := h.storage.GetObjectStream(r.Context(), bucket, vttKey)
 		if err != nil {
 			logger.New().Error("hls proxy: vtt %s: %v", vttKey, err)
 			http.Error(w, "not found", http.StatusNotFound)
@@ -467,7 +488,11 @@ func (h *Handler) HandleHLSProxy(w http.ResponseWriter, r *http.Request) {
 
 	s3Key := fmt.Sprintf("videos/%s/hls/%s", videoID, segPath)
 
-	body, err := h.storage.GetObjectStream(r.Context(), s3Key)
+	bucket := video.BucketID
+	if video.TranscodeBucketID != nil {
+		bucket = *video.TranscodeBucketID
+	}
+	body, err := h.storage.GetObjectStream(r.Context(), bucket, s3Key)
 	if err != nil {
 		logger.New().Error("hls proxy: get object %s: %v", s3Key, err)
 		http.Error(w, "not found", http.StatusNotFound)

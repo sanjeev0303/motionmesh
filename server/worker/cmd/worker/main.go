@@ -68,8 +68,8 @@ func main() {
 	s3Client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
 		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
 	})
-	storageAdapter := storage.NewS3Adapter(s3Client, cfg.StorageBucket)
-	if err := storageAdapter.CheckACL(ctx); err != nil {
+	storageAdapter := storage.NewS3Adapter(s3Client)
+	if err := storageAdapter.CheckACL(ctx, cfg.StorageBucket); err != nil {
 		log.Error("storage bucket unreachable: %v", err)
 		os.Exit(1)
 	}

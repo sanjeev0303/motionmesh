@@ -88,8 +88,8 @@ func main() {
 	s3Client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
 		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
 	})
-	storageAdapter := storage.NewS3Adapter(s3Client, cfg.StorageBucket)
-	if err := storageAdapter.CheckACL(ctx); err != nil {
+	storageAdapter := storage.NewS3Adapter(s3Client)
+	if err := storageAdapter.CheckACL(ctx, cfg.StorageBucket); err != nil {
 		log.Error("storage bucket unreachable (continuing anyway): %v", err)
 	}
 
@@ -127,7 +127,7 @@ func main() {
 
 	// ── Branding ──────────────────────────────────────────────────────────────
 	var brandingRepo sharedbranding.BrandingRepository = brandingpostgres.NewRepository(db)
-	brandingSvc := branding.NewService(brandingRepo, storageAdapter)
+	brandingSvc := branding.NewService(brandingRepo, storageAdapter, cfg.StorageBucket)
 
 	// ── Videos ────────────────────────────────────────────────────────────────
 	videosRepo := videospostgres.NewRepository(db)

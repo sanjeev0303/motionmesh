@@ -105,7 +105,7 @@ func (s *Service) VerifyClerkToken(ctx context.Context, token string) (*models.A
 		JWKSClient: s.jwksClient,
 	})
 	if err != nil {
-		return nil, ErrInvalidToken
+		return nil, fmt.Errorf("jwt verify failed: %w", err)
 	}
 
 	// Prefer org identity for team accounts (Clerk Organizations).

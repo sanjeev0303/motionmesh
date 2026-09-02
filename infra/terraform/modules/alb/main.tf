@@ -61,7 +61,7 @@ resource "aws_lb" "this" {
 # S3 bucket for ALB access logs
 resource "aws_s3_bucket" "alb_logs" {
   bucket        = "${var.name}-alb-logs-${data.aws_caller_identity.current.account_id}"
-  force_destroy = false
+  force_destroy = true
 
   tags = { Name = "${var.name}-alb-logs" }
 }

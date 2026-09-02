@@ -61,7 +61,7 @@ func (s *Service) DeleteBucket(ctx context.Context, bucketID string, accountID s
 
 	// Delete from storage
 	for _, obj := range objects {
-		_ = s.storage.DeleteObject(ctx, obj.Key)
+		_ = s.storage.DeleteObject(ctx, bucketID, obj.Key)
 	}
 
 	// Finally, delete from the database

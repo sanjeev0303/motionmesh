@@ -34,7 +34,7 @@ func (u *Uploader) uploadFile(ctx context.Context, filePath, objectKey, contentT
 
 	store := u.store
 
-	if err := store.PutObject(ctx, objectKey, data, contentType); err != nil {
+	if err := store.PutObject(ctx, *bucketID, objectKey, data, contentType); err != nil {
 		return 0, fmt.Errorf("failed to upload %s: %w", objectKey, err)
 	}
 
@@ -125,7 +125,7 @@ func (u *Uploader) UploadCaption(ctx context.Context, videoID, lang, vttContent 
 	store := u.store
 	
 	data := []byte(vttContent)
-	if err := store.PutObject(ctx, objectKey, data, "text/vtt"); err != nil {
+	if err := store.PutObject(ctx, *bucketID, objectKey, data, "text/vtt"); err != nil {
 		return UploadedFile{}, fmt.Errorf("failed to upload caption: %w", err)
 	}
 

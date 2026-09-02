@@ -14,10 +14,11 @@ import (
 type Service struct {
 	repo    sharedbranding.BrandingRepository
 	storage ObjectStorage
+	bucket  string
 }
 
-func NewService(repo sharedbranding.BrandingRepository, storage ObjectStorage) *Service {
-	return &Service{repo: repo, storage: storage}
+func NewService(repo sharedbranding.BrandingRepository, storage ObjectStorage, bucket string) *Service {
+	return &Service{repo: repo, storage: storage, bucket: bucket}
 }
 
 func (s *Service) GetWatermark(ctx context.Context, accountID string) (*models.WatermarkMetadata, error) {
@@ -46,7 +47,7 @@ func (s *Service) UpdateWatermark(ctx context.Context, accountID, position strin
 // UploadAsset stores the watermark image and updates the object key reference.
 func (s *Service) UploadAsset(ctx context.Context, accountID string, data []byte, contentType string) (*models.WatermarkMetadata, error) {
 	key := fmt.Sprintf("watermarks/%s/logo", accountID)
-	if err := s.storage.PutObject(ctx, key, data, contentType); err != nil {
+	if err := s.storage.PutObject(ctx, s.bucket, key, data, contentType); err != nil {
 		return nil, fmt.Errorf("branding: upload asset: %w", err)
 	}
 

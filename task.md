@@ -82,3 +82,81 @@
 - [x] Fix 401 Unauthorized errors in production API
   - [x] Run PostgreSQL schema migrations (000_init_schema to 009_account_balance) against the Aurora database
   - [x] Restart the API EC2 service to connect to the migrated schema
+- [x] Add MOTIONMESH_API_KEY to dashboard deployment
+  - [x] Add MOTIONMESH_API_KEY env variable in dashboard.sh.tftpl
+  - [x] Redeploy dashboard EC2 instance with Terraform
+- [x] Fix SDK 404 error during upload on Dashboard
+  - [x] Inject MOTIONMESH_BASE_URL into Dashboard Docker container so SDK targets the API URL instead of the Dashboard URL
+  - [x] Redeploy Dashboard EC2 via Terraform
+- [x] Fix Dashboard Upload 500 API Error
+  - [x] Identify missing `transcode_bucket_id` column in `videos` table in the production Aurora database.
+  - [x] Run remaining SQL migrations from `infra/postgres/migrations/` on the API instance via `psql`.
+  - [x] Restart the API Docker container to clear any cached queries.
+- [x] Fix GET /v1/videos 500 error
+  - [x] Identify missing `captions_status` column (from `005_captions_status.sql`).
+  - [x] Run remaining SQL migrations (`003` to `005`) on the API instance via `psql`.
+  - [x] Restart the API Docker container to clear schema caches.
+- [x] Fix Video Transcoding Failures
+  - [x] Analyze `worker` logs: Found missing Postgres unique constraint error for renditions.
+  - [x] Run `003_renditions_unique.sql` manually on the Aurora database to resolve the worker constraint crash.
+  - [x] Analyze `captions-sidecar` logs: Found missing `GEMINI_API_KEY` warning causing chapters to skip.
+  - [x] Update `main.tf` and `captions.sh.tftpl` to pass the `gemini_api_key` into the Docker container.
+  - [x] Re-run `terraform apply` to replace the Captions EC2 instance with the updated configuration.
+- [ ] Debug Clerk JWT Verification Error
+  - [x] Modify `service.go` in the Go API to expose the underlying `jwt.Verify` error message.
+  - [x] Deploy the updated Go API to the production EC2 instance.
+  - [ ] Await user retry to capture the exact JWT verification error in the logs.
+- [ ] Debug Clerk JWT Verification Error
+  - [x] Modify `service.go` in the Go API to expose the underlying `jwt.Verify` error message.
+  - [x] Deploy the updated Go API to the production EC2 instance.
+  - [ ] Await user retry to capture the exact JWT verification error in the logs.
+  - [x] Analyze `worker` logs: Found connection error to `captions-sidecar` because its IP changed when recreated, and found missing `size_bytes` column in `objects` table.
+  - [x] Add `size_bytes` to `objects` table manually in the production Aurora database.
+  - [x] Update worker instance configuration with the new `captions-sidecar` private IP and restart the worker.
+- [ ] Debug Dashboard Upload Failure
+  - [x] Check API logs: Confirmed the `POST` request never reached the backend API.
+  - [x] Analyze browser error: Identified `net::ERR_NETWORK_CHANGED` as a local internet connection drop.
+- [ ] Migrate `captions-sidecar` to HuggingFace
+  - [x] Replace `langchain-google-genai` with `langchain-huggingface` in `pyproject.toml`.
+  - [x] Update `transcribe.py` to use `HuggingFaceEndpoint` and `ChatHuggingFace`.
+  - [x] Update Terraform configurations and `.env` files to replace `GEMINI_API_KEY` with `HUGGINGFACE_API_KEY`.
+  - [x] Inject the new Hugging Face API key via Terraform and deploy the new `captions-sidecar` instance.
+  - [x] Update worker configuration with the new sidecar IP.
+- [ ] Fix bucket deletion logic from Dashboard UI
+  - [x] Identified that clicking "Delete Bucket" in UI did not call any backend API (it only showed a toast).
+  - [x] Implemented `DeleteBucket` method in `server/api/internal/buckets/postgres/repository.go`.
+  - [x] Added `r.Delete("/{id}", h.deleteBucket)` route and logic in `server/api/internal/buckets/handler.go`.
+  - [x] Updated the `client/dashboard/src/app/dashboard/buckets/[id]/page.tsx` to execute a `DELETE` fetch request on the `handleDelete` click event.
+  - [x] Deployed the backend and frontend updates to EC2 (API and Dashboard instances).
+- [x] Fix Media Convert Re-triggering Flow
+  - [x] Analyzed video upload, transcoding, and streaming flow.
+  - [x] Identified that `TriggerJob` in the backend was silently ignoring jobs if they already existed in `transcode_jobs`, breaking the Media Convert UI "Create Job" button.
+  - [x] Modified `TriggerJob` to check if a job exists, update its status to `queued` if it's not currently running, and publish the job to NATS.
+  - [x] Committed changes and deployed the updated API via SSM.
+- [x] Fix Bucket Deletion Storage Leak
+  - [x] Analyzed bucket deletion flow and discovered that `DeleteBucket` removed the bucket and object references from the PostgreSQL database, but left the actual files orphaned in the AWS S3 storage.
+  - [x] Modified the bucket service and repository to query all tracked objects within the bucket before deletion.
+  - [x] Implemented logic to call `storage.DeleteObject` for every object in the bucket, ensuring the physical files are removed from S3.
+  - [x] Committed and pushed the changes, and deployed the API to EC2.
+- [x] Add Uploading Status to Dashboard Videos Page
+  - [x] Analyzed `client/dashboard/src/app/dashboard/videos/page.tsx` and identified the "Upload Video" buttons.
+  - [x] Modified both the main and empty-state "Upload Video" buttons to conditionally display "Uploading..." and disable themselves while a video is being uploaded to S3.
+  - [x] Committed the UI changes and deployed the `client` container to the Dashboard EC2 instance.
+- [x] Reduce Dashboard Video Upload Time (Direct-to-S3 Upload)
+  - [x] Analyzed `dashboardUpload.ts` and discovered that videos were being proxy-uploaded through the Go API server (`POST /v1/videos/{id}/upload`), which doubled the upload time and bandwidth consumption.
+  - [x] Added a `POST /v1/videos/{id}/finalize-upload` route to the API to update bucket tracking and trigger transcoding without accepting the video file itself.
+  - [x] Refactored `dashboardUpload.ts` to upload the video file directly to AWS S3 using the pre-signed `upload_url` (`PUT`) and then call the `finalize-upload` endpoint on success.
+  - [x] Committed the code changes and deployed the updated API and Dashboard services to EC2.
+- [x] Optimize Video Upload Strategy (Client-side Direct to S3)
+  - [x] Identified that the previous "Dashboard Upload" approach was still routing through the Next.js API server before reaching S3, causing a bottleneck.
+  - [x] Refactored `client/dashboard/src/app/dashboard/videos/page.tsx` to completely bypass the SDK and the Next.js API server for uploads.
+  - [x] The browser now fetches the S3 pre-signed URL directly from the Go API and uploads the video file straight to S3 (`PUT`), ensuring the absolute fastest upload speed and lowest latency possible.
+  - [x] Pushed the optimizations and deployed them to the EC2 instances.
+- [x] Analyze Dashboard Upload 408 Request Timeout Error
+  - [x] Identified that the 408 Request Timeout originated from the deprecated Next.js proxy route (`/api/motionmesh`) used by the old SDK `dashboardUpload` function.
+  - [x] Confirmed the dashboard EC2 instance was successfully updated to the direct-to-S3 upload logic, meaning the user's browser is utilizing a cached JavaScript bundle.
+- [x] Update MotionMesh API Key
+  - [x] Replaced the old API key with `mot_live_lzmn15u096hpy1jt43nm` in the Dashboard's `.env` configuration file locally and on the EC2 production instance.
+  - [x] Restarted the client docker container to apply the new API key.
+- [x] Correct the storage logic within the backend worker services (uploader/storage.go) to ensure transcoded objects are accurately routed to the TranscodeBucketID rather than defaulting to the standard bucket.
+- [x] Fix Dashboard API Keys state logic to integrate with real Go backend, removing simulation.

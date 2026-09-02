@@ -53,33 +53,51 @@ export default function ApiKeysPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newKeyName.trim()) return;
     
-    // Simulate generation
-    const fullKey = `mot_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-    const masked = `mot_live_••••••••${fullKey.slice(-4)}`;
-    
-    const newKey = {
-      id: `key_${Date.now()}`,
-      name: newKeyName,
-      scope: newKeyScope,
-      createdAt: new Date().toISOString(),
-      lastUsedAt: "Never",
-      maskedValue: masked
-    };
-    
-    queryClient.setQueryData(['apiKeys'], (oldData: any[] | undefined) => [newKey, ...(oldData || [])]);
-    setNewlyCreatedKey(fullKey);
+    try {
+      const { data, error } = await api.POST("/v1/api-keys" as any, {
+        body: { name: newKeyName }
+      });
+      
+      if (error) {
+        throw new Error("Failed to create API key");
+      }
+      
+      // The API returns { key: "full_secret", api_key: { id, name, prefix, ... } }
+      const newKey = (data as any).api_key;
+      const fullKey = (data as any).key;
+      
+      queryClient.setQueryData(['apiKeys'], (oldData: any[] | undefined) => [newKey, ...(oldData || [])]);
+      setNewlyCreatedKey(fullKey);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to create API key. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleRevoke = (id: string, name: string) => {
-    queryClient.setQueryData(['apiKeys'], (oldData: any[] | undefined) => (oldData || []).filter((k: any) => k.id !== id));
-    toast({
-      title: "Key revoked",
-      description: `The API key "${name}" has been revoked permanently.`,
-      variant: "destructive"
-    });
+  const handleRevoke = async (id: string, name: string) => {
+    try {
+      const { error } = await api.DELETE(`/v1/api-keys/${id}` as any, {});
+      if (error) throw new Error("Failed to revoke");
+
+      queryClient.setQueryData(['apiKeys'], (oldData: any[] | undefined) => (oldData || []).filter((k: any) => k.id !== id));
+      toast({
+        title: "Key revoked",
+        description: `The API key "${name}" has been revoked permanently.`,
+        variant: "destructive"
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to revoke API key. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const closeCreateModal = () => {
@@ -206,47 +224,50 @@ export default function ApiKeysPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {keys.map((key) => (
-                <TableRow key={key.id} className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors group">
-                  <TableCell className="font-medium text-text-primary">{key.name}</TableCell>
-                  <TableCell>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
-                      key.scope === 'admin' ? 'bg-danger/10 text-danger border-danger/20' :
-                      key.scope === 'write' ? 'bg-accent-motion/10 text-accent-motion border-accent-motion/20' :
-                      'bg-bg-surface-raised text-text-muted border-border-subtle'
-                    }`}>
-                      {key.scope}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 group/copy">
-                      <code className="font-mono text-sm text-text-muted">{key.maskedValue}</code>
+              {keys.map((key) => {
+                const scopeDisplay = (key.scopes && key.scopes.length > 0 && key.scopes[0] !== "*") ? key.scopes[0] : "admin";
+                return (
+                  <TableRow key={key.id} className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors group">
+                    <TableCell className="font-medium text-text-primary">{key.name}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                        scopeDisplay === 'admin' ? 'bg-danger/10 text-danger border-danger/20' :
+                        scopeDisplay === 'write' ? 'bg-accent-motion/10 text-accent-motion border-accent-motion/20' :
+                        'bg-bg-surface-raised text-text-muted border-border-subtle'
+                      }`}>
+                        {scopeDisplay}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 group/copy">
+                        <code className="font-mono text-sm text-text-muted">{key.prefix}••••••••</code>
+                        <button 
+                          onClick={() => handleCopy(key.id, key.prefix)}
+                          className="text-text-muted opacity-0 group-hover/copy:opacity-100 hover:text-text-primary transition-all"
+                          title="Copy Prefix"
+                        >
+                          {copiedId === key.id ? <CheckCircle2 className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+                        </button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-text-muted text-sm">
+                      {!key.last_used_at ? "Never" : new Date(key.last_used_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-text-muted text-sm">
+                      {new Date(key.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
                       <button 
-                        onClick={() => handleCopy(key.id, key.maskedValue)}
-                        className="text-text-muted opacity-0 group-hover/copy:opacity-100 hover:text-text-primary transition-all"
-                        title="Copy Key"
+                        onClick={() => handleRevoke(key.id, key.name)}
+                        className="p-2 text-text-muted opacity-0 group-hover:opacity-100 hover:text-danger transition-all rounded-md hover:bg-danger/10"
+                        title="Revoke Key"
                       >
-                        {copiedId === key.id ? <CheckCircle2 className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+                        <Trash2 className="h-4 w-4" />
                       </button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-text-muted text-sm">
-                    {key.lastUsedAt === "Never" ? "Never" : new Date(key.lastUsedAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-text-muted text-sm">
-                    {new Date(key.createdAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <button 
-                      onClick={() => handleRevoke(key.id, key.name)}
-                      className="p-2 text-text-muted opacity-0 group-hover:opacity-100 hover:text-danger transition-all rounded-md hover:bg-danger/10"
-                      title="Revoke Key"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>

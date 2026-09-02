@@ -124,7 +124,7 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 		})
 		pg.Go(func() error {
 			masterKey := fmt.Sprintf("videos/%s/hls/master.m3u8", videoID)
-			_, e := h.store.GetObject(pgCtx, masterKey)
+			_, e := h.store.GetObject(pgCtx, targetBucketID, masterKey)
 			alreadyEncoded = (e == nil)
 			return nil
 		})
@@ -398,7 +398,7 @@ func (h *Handler) downloadSource(ctx context.Context, objectKey, outPath string,
 			}
 		}
 
-		body, err := store.GetObjectStream(dlCtx, objectKey)
+		body, err := store.GetObjectStream(dlCtx, *bucketID, objectKey)
 		if err != nil {
 			lastErr = err
 			h.log.Info("downloadSource: GetObjectStream failed (%d/%d): %v", i+1, maxRetries, err)

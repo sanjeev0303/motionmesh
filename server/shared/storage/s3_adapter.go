@@ -18,23 +18,21 @@ import (
 type S3Adapter struct {
 	client    *s3.Client
 	presigner *s3.PresignClient
-	bucket    string
 }
 
-func NewS3Adapter(client *s3.Client, bucket string) *S3Adapter {
+func NewS3Adapter(client *s3.Client) *S3Adapter {
 	return &S3Adapter{
 		client:    client,
 		presigner: s3.NewPresignClient(client),
-		bucket:    bucket,
 	}
 }
 
-func (a *S3Adapter) PutObject(ctx context.Context, key string, data []byte, contentType string) error {
+func (a *S3Adapter) PutObject(ctx context.Context, bucket string, key string, data []byte, contentType string) error {
 	reader := bytes.NewReader(data)
 	contentLength := int64(len(data))
 
 	input := &s3.PutObjectInput{
-		Bucket:        aws.String(a.bucket),
+		Bucket:        aws.String(bucket),
 		Key:           aws.String(key),
 		Body:          reader,
 		ContentType:   aws.String(contentType),
@@ -59,7 +57,7 @@ func (a *S3Adapter) PutObject(ctx context.Context, key string, data []byte, cont
 // PutObjectStream streams data from r directly to S3 using the manager.Uploader
 // which handles chunking and buffering internally, avoiding seekability issues.
 // contentLength is kept for signature but manager uses Body.
-func (a *S3Adapter) PutObjectStream(ctx context.Context, key string, r io.Reader, contentLength int64, contentType string) error {
+func (a *S3Adapter) PutObjectStream(ctx context.Context, bucket string, key string, r io.Reader, contentLength int64, contentType string) error {
 	uploader := manager.NewUploader(a.client, func(u *manager.Uploader) {
 		u.PartSize = 5 * 1024 * 1024 // 5 MB part size
 		u.ClientOptions = append(u.ClientOptions, func(o *s3.Options) {
@@ -68,7 +66,7 @@ func (a *S3Adapter) PutObjectStream(ctx context.Context, key string, r io.Reader
 	})
 
 	input := &s3.PutObjectInput{
-		Bucket:      aws.String(a.bucket),
+		Bucket:      aws.String(bucket),
 		Key:         aws.String(key),
 		Body:        r,
 		ContentType: aws.String(contentType),
@@ -84,9 +82,9 @@ func (a *S3Adapter) PutObjectStream(ctx context.Context, key string, r io.Reader
 	return err
 }
 
-func (a *S3Adapter) GetObjectStream(ctx context.Context, key string) (io.ReadCloser, error) {
+func (a *S3Adapter) GetObjectStream(ctx context.Context, bucket string, key string) (io.ReadCloser, error) {
 	out, err := a.client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(a.bucket),
+		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	}, func(o *s3.Options) {
 		o.ResponseChecksumValidation = aws.ResponseChecksumValidationWhenRequired
@@ -97,8 +95,8 @@ func (a *S3Adapter) GetObjectStream(ctx context.Context, key string) (io.ReadClo
 	return out.Body, nil
 }
 
-func (a *S3Adapter) GetObject(ctx context.Context, key string) ([]byte, error) {
-	body, err := a.GetObjectStream(ctx, key)
+func (a *S3Adapter) GetObject(ctx context.Context, bucket string, key string) ([]byte, error) {
+	body, err := a.GetObjectStream(ctx, bucket, key)
 	if err != nil {
 		return nil, err
 	}
@@ -106,17 +104,17 @@ func (a *S3Adapter) GetObject(ctx context.Context, key string) ([]byte, error) {
 	return io.ReadAll(body)
 }
 
-func (a *S3Adapter) DeleteObject(ctx context.Context, key string) error {
+func (a *S3Adapter) DeleteObject(ctx context.Context, bucket string, key string) error {
 	_, err := a.client.DeleteObject(ctx, &s3.DeleteObjectInput{
-		Bucket: aws.String(a.bucket),
+		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	return err
 }
 
-func (a *S3Adapter) GetPresignedURL(ctx context.Context, key string) (string, error) {
+func (a *S3Adapter) GetPresignedURL(ctx context.Context, bucket string, key string) (string, error) {
 	req, err := a.presigner.PresignGetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(a.bucket),
+		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	}, s3.WithPresignExpires(15*time.Minute))
 	if err != nil {
@@ -125,9 +123,9 @@ func (a *S3Adapter) GetPresignedURL(ctx context.Context, key string) (string, er
 	return req.URL, nil
 }
 
-func (a *S3Adapter) GetPresignedUploadURL(ctx context.Context, key, contentType string) (string, error) {
+func (a *S3Adapter) GetPresignedUploadURL(ctx context.Context, bucket string, key, contentType string) (string, error) {
 	req, err := a.presigner.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(a.bucket),
+		Bucket:      aws.String(bucket),
 		Key:         aws.String(key),
 		ContentType: aws.String(contentType),
 	}, s3.WithPresignExpires(15*time.Minute))
@@ -139,18 +137,18 @@ func (a *S3Adapter) GetPresignedUploadURL(ctx context.Context, key, contentType 
 
 
 // CheckACL verifies required bucket permissions exist (call at startup).
-func (a *S3Adapter) CheckACL(ctx context.Context) error {
+func (a *S3Adapter) CheckACL(ctx context.Context, bucket string) error {
 	_, err := a.client.HeadBucket(ctx, &s3.HeadBucketInput{
-		Bucket: aws.String(a.bucket),
+		Bucket: aws.String(bucket),
 	})
 	if err != nil {
-		return fmt.Errorf("storage: cannot access bucket %q: %w", a.bucket, err)
+		return fmt.Errorf("storage: cannot access bucket %q: %w", bucket, err)
 	}
 	return nil
 }
 
 // Ensure S3Adapter implements ObjectStorage at compile time.
-var _ interface{ PutObject(context.Context, string, []byte, string) error } = (*S3Adapter)(nil)
+var _ interface{ PutObject(context.Context, string, string, []byte, string) error } = (*S3Adapter)(nil)
 
 // keep awss3types imported (used for compile-time check guard)
 var _ = awss3types.Object{}
