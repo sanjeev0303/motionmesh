@@ -112,6 +112,10 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 		transcodeBucketName = h.fallbackTranscodeBucket
 	}
 
+	logicalTranscodeBucketID := bucketID
+	if transcodeBucketID != nil && *transcodeBucketID != "" {
+		logicalTranscodeBucketID = *transcodeBucketID
+	}
 	targetBucketID := transcodeBucketName // physical name for S3 calls
 	_ = transcodeBucketID                 // keep original pointer for uploader signatures
 
@@ -354,7 +358,7 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 	}
 
 	h.log.Info("Saving tracked objects for video: %s", videoID)
-	if err := h.saveObjectsForJob(ctx, targetBucketID, uploadedObjects); err != nil {
+	if err := h.saveObjectsForJob(ctx, logicalTranscodeBucketID, uploadedObjects); err != nil {
 		h.log.Error("failed to save tracked objects: %v", err)
 	}
 
