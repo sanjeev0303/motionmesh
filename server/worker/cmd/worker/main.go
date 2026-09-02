@@ -78,8 +78,14 @@ func main() {
 	brandingRepo := brandingpostgres.NewRepository(db)
 	up := uploader.NewUploader(storageAdapter)
 	capClient := captions.NewClient(cfg.CaptionsSidecarURL, &http.Client{Timeout: 30 * time.Minute})
-	
-	jobHandler := job.NewHandler(db, storageAdapter, up, capClient, brandingRepo, log, nc)
+
+	// Pass physical bucket names as guaranteed fallbacks.
+	// If DB lookup fails the worker uses these env-sourced names instead of a raw UUID.
+	transcodeBucket := cfg.StorageTranscodeBucket
+	if transcodeBucket == "" {
+		transcodeBucket = cfg.StorageBucket // single-bucket setup
+	}
+	jobHandler := job.NewHandler(db, storageAdapter, up, capClient, brandingRepo, log, nc, cfg.StorageBucket, transcodeBucket)
 	consumer := job.NewConsumer(nc, jobHandler, log)
 
 	// ── Start Consumer ───────────────────────────────────────────────────────

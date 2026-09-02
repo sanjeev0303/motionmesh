@@ -13,8 +13,9 @@ type Config struct {
 	QueueURL    string
 
 	// Object storage — AWS S3 bucket (IAM role used in production)
-	StorageBucket string
-	StorageRegion string
+	StorageBucket          string
+	StorageTranscodeBucket string // separate bucket for HLS/captions output; falls back to StorageBucket
+	StorageRegion          string
 
 	// Auth
 	ClerkSecretKey string
@@ -61,8 +62,9 @@ func Load() *Config {
 		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379/0"),
 		QueueURL:    getEnv("QUEUE_URL", "nats://localhost:4222"),
 
-		StorageBucket: getEnv("STORAGE_BUCKET", "motionmesh-dev"),
-		StorageRegion: getEnv("STORAGE_REGION", "ap-south-1"),
+		StorageBucket:          getEnv("STORAGE_BUCKET", "motionmesh-dev"),
+		StorageTranscodeBucket: getEnv("STORAGE_TRANSCODE_BUCKET", ""),
+		StorageRegion:          getEnv("STORAGE_REGION", "ap-south-1"),
 
 		ClerkSecretKey: getEnv("CLERK_SECRET_KEY", ""),
 		ClerkJWKSURL:   getEnv("CLERK_JWKS_URL", ""),

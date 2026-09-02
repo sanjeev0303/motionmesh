@@ -27,24 +27,28 @@ import (
 )
 
 type Handler struct {
-	db           *sql.DB
-	store        storage.ObjectStorage
-	uploader     *uploader.Uploader
-	captions     *captions.Client
-	brandingRepo branding.BrandingRepository
-	log          *logger.Logger
-	nc           *nats.Conn
+	db                     *sql.DB
+	store                  storage.ObjectStorage
+	uploader               *uploader.Uploader
+	captions               *captions.Client
+	brandingRepo           branding.BrandingRepository
+	log                    *logger.Logger
+	nc                     *nats.Conn
+	fallbackSourceBucket   string // physical S3 name from STORAGE_BUCKET env
+	fallbackTranscodeBucket string // physical S3 name from STORAGE_TRANSCODE_BUCKET env
 }
 
-func NewHandler(db *sql.DB, store storage.ObjectStorage, up *uploader.Uploader, capClient *captions.Client, brandingRepo branding.BrandingRepository, log *logger.Logger, nc *nats.Conn) *Handler {
+func NewHandler(db *sql.DB, store storage.ObjectStorage, up *uploader.Uploader, capClient *captions.Client, brandingRepo branding.BrandingRepository, log *logger.Logger, nc *nats.Conn, sourceBucket, transcodeBucket string) *Handler {
 	return &Handler{
-		db:           db,
-		store:        store,
-		uploader:     up,
-		captions:     capClient,
-		brandingRepo: brandingRepo,
-		log:          log,
-		nc:           nc,
+		db:                     db,
+		store:                  store,
+		uploader:               up,
+		captions:               capClient,
+		brandingRepo:           brandingRepo,
+		log:                    log,
+		nc:                     nc,
+		fallbackSourceBucket:   sourceBucket,
+		fallbackTranscodeBucket: transcodeBucket,
 	}
 }
 
@@ -84,8 +88,9 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 	// Resolve physical S3 bucket names from UUID logical IDs stored in the DB.
 	sourceBucketName, err := h.getPhysicalBucketName(ctx, bucketID)
 	if err != nil {
-		h.log.Error("cannot resolve source bucket name for %s: %v — falling back to raw ID", bucketID, err)
-		sourceBucketName = bucketID
+		// Fall back to env-level bucket name — always reliable.
+		h.log.Error("cannot resolve source bucket name for UUID %s (%v) — using env fallback %q", bucketID, err, h.fallbackSourceBucket)
+		sourceBucketName = h.fallbackSourceBucket
 	}
 
 	// Transcode output goes to a separate bucket when configured.
@@ -93,10 +98,18 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 	if transcodeBucketID != nil && *transcodeBucketID != "" {
 		name, err := h.getPhysicalBucketName(ctx, *transcodeBucketID)
 		if err != nil {
-			h.log.Error("cannot resolve transcode bucket name for %s: %v — using source bucket", *transcodeBucketID, err)
+			fbk := h.fallbackTranscodeBucket
+			if fbk == "" {
+				fbk = sourceBucketName
+			}
+			h.log.Error("cannot resolve transcode bucket name for UUID %s (%v) — using fallback %q", *transcodeBucketID, err, fbk)
+			transcodeBucketName = fbk
 		} else {
 			transcodeBucketName = name
 		}
+	} else if h.fallbackTranscodeBucket != "" {
+		// No transcode_bucket_id in DB but env has a dedicated transcode bucket.
+		transcodeBucketName = h.fallbackTranscodeBucket
 	}
 
 	targetBucketID := transcodeBucketName // physical name for S3 calls
@@ -660,13 +673,18 @@ func extractAudio(ctx context.Context, inputPath, outputPath string) error {
 	return nil
 }
 
-// getPhysicalBucketName resolves a logical bucket UUID to its physical S3 name
-// stored in the buckets table. Falls back to the raw bucketID on error.
+// getPhysicalBucketName resolves a logical bucket UUID to its physical S3 name.
+// Falls back to empty string on error — caller must handle the fallback.
 func (h *Handler) getPhysicalBucketName(ctx context.Context, bucketID string) (string, error) {
+	if bucketID == "" {
+		return "", fmt.Errorf("empty bucketID")
+	}
 	var name string
-	err := h.db.QueryRowContext(ctx, "SELECT name FROM buckets WHERE id = $1::uuid", bucketID).Scan(&name)
+	// Omit ::uuid cast — let the postgres driver handle type coercion.
+	// Explicit casts with lib/pq can cause "invalid input syntax for type uuid" errors.
+	err := h.db.QueryRowContext(ctx, "SELECT name FROM buckets WHERE id::text = $1", bucketID).Scan(&name)
 	if err != nil {
-		return "", fmt.Errorf("bucket %s: %w", bucketID, err)
+		return "", fmt.Errorf("bucket lookup %s: %w", bucketID, err)
 	}
 	return name, nil
 }
