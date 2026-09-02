@@ -183,11 +183,16 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 	if req.BucketID != nil && *req.BucketID != "" {
 		bucketID = *req.BucketID
 	}
+	
+	var transcodeBucketID *string
+	if req.TranscodeBucketID != nil && *req.TranscodeBucketID != "" {
+		transcodeBucketID = req.TranscodeBucketID
+	}
 
 	video := &models.Video{
 		AccountID:         acc.ID,
 		BucketID:          bucketID,
-		TranscodeBucketID: req.TranscodeBucketID,
+		TranscodeBucketID: transcodeBucketID,
 		ObjectKey:         objectKey,
 		Title:             filepath.Base(req.Filename),
 		SizeBytes:         req.SizeBytes,
