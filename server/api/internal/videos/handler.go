@@ -183,7 +183,11 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	logger.New().Info("Upload initiation req: %+v", req)
+	bucketIDVal := ""
+	transcodeBucketIDVal := ""
+	if req.BucketID != nil { bucketIDVal = *req.BucketID }
+	if req.TranscodeBucketID != nil { transcodeBucketIDVal = *req.TranscodeBucketID }
+	logger.New().Info("Upload initiation req: filename=%s bucket_id=%q transcode_bucket_id=%q", req.Filename, bucketIDVal, transcodeBucketIDVal)
 
 	objectKey := acc.ID + "/videos/" + req.Filename
 
@@ -239,6 +243,10 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 		tid := bucketID
 		transcodeBucketID = &tid
 	}
+
+	var resolvedTranscodeBucket string
+	if transcodeBucketID != nil { resolvedTranscodeBucket = *transcodeBucketID }
+	logger.New().Info("Resolved bucket_id=%q transcode_bucket_id=%q", bucketID, resolvedTranscodeBucket)
 
 	video := &models.Video{
 		AccountID:         acc.ID,
