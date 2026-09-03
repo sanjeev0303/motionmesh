@@ -24,5 +24,15 @@ var allRenditions = []Rendition{
 // BuildLadder generates renditions that don't upscale the source.
 // It always includes at least one rendition (the lowest resolution).
 func BuildLadder(sourceHeight int) []Rendition {
-	return allRenditions
+	var ladder []Rendition
+	for _, r := range allRenditions {
+		if r.Height <= sourceHeight {
+			ladder = append(ladder, r)
+		}
+	}
+	// Always include at least the lowest rendition.
+	if len(ladder) == 0 {
+		ladder = []Rendition{allRenditions[len(allRenditions)-1]}
+	}
+	return ladder
 }

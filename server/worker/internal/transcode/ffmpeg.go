@@ -49,13 +49,43 @@ func Encode(ctx context.Context, inputPath string, probe *ProbeResult, rendition
 	sem := make(chan struct{}, maxParallel)
 	resultCh := make(chan result, len(renditions))
 
-	// Shared progress tracking: each rendition contributes 1/N of total progress.
-	var totalFramesDone int64
+	// Progress tracking: each rendition gets its own atomic frame counter.
+	// Overall % = mean of (done/total) across all renditions × 100.
+	n := len(renditions)
+	framesDone := make([]int64, n)
+	// Expected frames per rendition: duration × fps (use probe FPS; fall back to 25).
+	fps := probe.FPS
+	if fps <= 0 {
+		fps = 25.0
+	}
+	expectedFrames := int64(probe.Duration * fps)
+	if expectedFrames < 1 {
+		expectedFrames = 1
+	}
+
+	emitProgress := func() {
+		if progressCb == nil || probe.Duration <= 0 {
+			return
+		}
+		var sum float64
+		for i := range framesDone {
+			done := atomic.LoadInt64(&framesDone[i])
+			sum += float64(done) / float64(expectedFrames)
+		}
+		pct := int(sum / float64(n) * 100)
+		if pct > 99 {
+			pct = 99
+		}
+		if pct < 0 {
+			pct = 0
+		}
+		progressCb(pct)
+	}
 
 	var wg sync.WaitGroup
-	for _, r := range renditions {
+	for idx, r := range renditions {
 		wg.Add(1)
-		go func(r Rendition) {
+		go func(r Rendition, idx int) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -67,21 +97,11 @@ func Encode(ctx context.Context, inputPath string, probe *ProbeResult, rendition
 			}
 
 			m3u8, err := encodeRendition(ctx, inputPath, probe, r, watermark, rendDir, func(frameDone int) {
-				// Aggregate progress: each rendition contributes equally.
-				atomic.AddInt64(&totalFramesDone, 1)
-				if progressCb != nil && probe.Duration > 0 {
-					// Rough estimate: divide total encoded frames by expected per-rendition frames.
-					fps := 25.0
-					expectedTotal := int64(len(renditions)) * int64(probe.Duration*fps)
-					pct := int(atomic.LoadInt64(&totalFramesDone) * 100 / (expectedTotal + 1))
-					if pct > 99 {
-						pct = 99
-					}
-					progressCb(pct)
-				}
+				atomic.StoreInt64(&framesDone[idx], int64(frameDone))
+				emitProgress()
 			})
 			resultCh <- result{label: r.Label, m3u8: m3u8, err: err}
-		}(r)
+		}(r, idx)
 	}
 
 	// Close resultCh once all goroutines finish.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 type ProbeResult struct {
@@ -14,6 +15,7 @@ type ProbeResult struct {
 	Width     int
 	Height    int
 	Codec     string
+	FPS       float64 // frames per second from r_frame_rate
 }
 
 func Probe(ctx context.Context, inputPath string) (*ProbeResult, error) {
@@ -36,10 +38,11 @@ func Probe(ctx context.Context, inputPath string) (*ProbeResult, error) {
 			Size     string `json:"size"`
 		} `json:"format"`
 		Streams []struct {
-			CodecType string `json:"codec_type"`
-			CodecName string `json:"codec_name"`
-			Width     int    `json:"width"`
-			Height    int    `json:"height"`
+			CodecType    string `json:"codec_type"`
+			CodecName    string `json:"codec_name"`
+			Width        int    `json:"width"`
+			Height       int    `json:"height"`
+			RFrameRate   string `json:"r_frame_rate"`
 		} `json:"streams"`
 	}
 
@@ -65,6 +68,14 @@ func Probe(ctx context.Context, inputPath string) (*ProbeResult, error) {
 			res.Width = stream.Width
 			res.Height = stream.Height
 			res.Codec = stream.CodecName
+			// Parse r_frame_rate (e.g. "24000/1001" or "25/1")
+			if parts := strings.SplitN(stream.RFrameRate, "/", 2); len(parts) == 2 {
+				num, e1 := strconv.ParseFloat(parts[0], 64)
+				den, e2 := strconv.ParseFloat(parts[1], 64)
+				if e1 == nil && e2 == nil && den > 0 {
+					res.FPS = num / den
+				}
+			}
 			break
 		}
 	}
