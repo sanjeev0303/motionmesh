@@ -96,14 +96,14 @@ export default function DashboardClient({
       actor: "You",
       action: "created bucket",
       resource: b.name,
-      timestamp: b.createdAt || b.created_at || new Date().toISOString()
+      timestamp: b.createdAt || b.created_at || "1970-01-01T00:00:00Z"
     })),
     ...(serverApiKeys || []).map(k => ({
       id: `key-${k.id}`,
       actor: "You",
       action: "generated API key",
       resource: k.name || 'default',
-      timestamp: k.createdAt || k.created_at || new Date().toISOString()
+      timestamp: k.createdAt || k.created_at || "1970-01-01T00:00:00Z"
     }))
   ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 5);
 

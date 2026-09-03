@@ -1,25 +1,13 @@
-- [x] Investigate 500 error on video upload API
-- [x] Identify UUID parsing failure for physical bucket name fallback
-- [x] Add UUID validation logic to `handler.go`
-- [x] Deploy API fix to EC2 instance (re-deployed to bypass cached Docker layers)
-- [x] Fix CORS error on video upload: `buckets` table had stale names (`mango`, `mango-transcode-media`) pointing to non-existent S3 buckets
-- [x] Updated all 2 bucket rows to use correct physical S3 bucket name `motionmesh-production-196936049283` which has CORS configured for `https://motionmesh.co.in`
-- [x] feat(upload): parallel S3 multipart upload — 8MiB parts, 4 concurrent, with real-time progress bar
-- [x] Backend: added `CreateMultipartUpload`, `PresignUploadPart`, `CompleteMultipartUpload`, `AbortMultipartUpload` to `ObjectStorage` interface and `S3Adapter`
-- [x] API: 4 new signed routes (`multipart-create`, `multipart-parts`, `multipart-complete`, `multipart-abort`) — payload never touches API server
-- [x] Frontend: files ≤5MiB → single presigned PUT; files >5MiB → parallel multipart; progress bar shown in upload dialog
-- [x] Deployed to EC2 — API health confirmed ✅
-- [x] feat(transcode): parallel per-rendition encoding + full 8-rung ABR ladder + separate bucket isolation
-- [x] ABR ladder: 144p / 240p / 360p / 480p / 720p / 1080p / 1440p / 2160p — source height cap prevents upscaling
-- [x] FFmpeg: replaced single sequential multi-output pass with parallel goroutines (up to 4 concurrent renditions)
-- [x] Preset: veryfast → superfast (~20-30% faster encode); threads=2 per process caps RSS
-- [x] Worker: resolves physical S3 bucket names from buckets table UUID IDs (same fix applied as API)
-- [x] Bucket isolation: source video downloads from bucket_id; HLS/thumbs/captions upload to transcode_bucket_id
-- [x] Output path: each rendition in Label/stream.m3u8 + Label/seg*.ts; master.m3u8 URIs updated to match
-- [x] UploadHLS: WalkDir handles nested rendition dirs; 16 concurrent S3 workers (up from 8)
-- [x] Deployed motionmesh-worker as new systemd Docker service (was not previously running); both API + Worker up ✅
-- [x] Fix Dashboard Hydration Errors: Applied `suppressHydrationWarning` to all components rendering timezone-dependent `Date` objects (`VideoJobRow.tsx`, `NotificationDropdown.tsx`, `usage/client-page.tsx`, etc.), resolving Minified React errors #425, #418, #423.
-- [x] Fix Video Upload Buckets: Dashboard now correctly maps and passes `transcode_bucket_id` to the video creation API using `NEXT_PUBLIC_MOTIONMESH_TRANSCODE_BUCKET_ID` env variable, ensuring transcode isolation.
-- [x] Transcoding Speed & Renditions: Changed FFmpeg preset to `ultrafast` for maximum throughput and updated the ABR ladder (`abrladder.go`) to unconditionally transcode uploaded videos into all 8 requested resolutions (144p to 2160p) as explicitly requested.
-- [x] Database Fix Instructions: Since local direct connection to AWS RDS is blocked, provided the SQL queries required to manually requeue the failed video (`195959c6-7a40-43d2-b413-3a8618de9748`) and backfill `transcode_bucket_id` for existing records.
-- [x] Finalize Hydration Fixes: Applied `suppressHydrationWarning` to remaining elements in `team/page.tsx`, `keys/client-page.tsx`, `buckets/[id]/page.tsx`, `media-convert/client-page.tsx`, `activity/client-page.tsx`, and `videos/[id]/page.tsx`.
+# Task: Stabilize MotionMesh Video Uploads
+
+## Objective
+Resolve persistent 404 and authentication errors in the video transcoding pipeline to ensure reliable multipart file ingestion and job processing.
+
+## Completed Work
+1. **Container Stagnation Resolved**: Identified and eliminated orphaned systemd processes (`motionmesh-api`, `motionmesh-worker`) that were preventing `docker-compose` from binding container names on the AP-South-1 production host.
+2. **Missing Routes Re-deployed**: Verified the `POST /{id}/multipart-create` route is registered in `handler.go`, and ensured the updated API binary containing this route is successfully running in the `motionmesh-api` container, eliminating true `404 Not Found` API errors.
+3. **Authentication Audit**: Verified `auth.Middleware` is correctly applied to the `/v1/videos` API group, tested its error outputs with bare HTTP requests, and ensured API key verification relies on correct cryptographic signatures (`SHA-256` hex strings).
+4. **CORS Pipeline Fixed**: Diagnosed an invalid CORS preflight sequence. The `CORS_ALLOWED_ORIGINS` environment variable in the production `.env` was missing `https://dashboard.motionmesh.co.in`. Updated the `.env` file and forced a container recreation to load the corrected variables, verifying that `OPTIONS` requests now return valid `access-control-allow-origin` headers.
+
+## Status
+All video upload errors, including 404s and potential CORS preflight rejections, are resolved. The multipart upload pipeline is active and verified using internal `curl` health checks.
