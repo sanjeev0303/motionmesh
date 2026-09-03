@@ -44,7 +44,7 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
   // Builds absolute API URL for raw fetch multipart calls
   const apiUrl = (path: string) => `${API_BASE}${path}`;
 
-  const { data: serverVideos, isError, isLoading, isRefetching } = useQuery({
+  const { data: serverVideos, isError, isLoading } = useQuery({
     queryKey: ["videos"],
     queryFn: async () => {
       const { data, error, response } = await api.GET("/v1/videos", {});
@@ -59,26 +59,20 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
       return data as unknown as Video[];
     },
     initialData: initialVideos,
-    staleTime: 60000,
+    staleTime: 30000,
     gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
+    // Poll every 5s only while a video is processing/queued; stops automatically once all are done.
+    refetchInterval: (query) => {
+      const videos = query.state.data as Video[] | undefined;
+      const hasProcessing = videos?.some((v) => v.status === "processing" || v.status === "queued");
+      return hasProcessing ? 5000 : false;
+    },
   });
 
   const videos = serverVideos ?? [];
   const showSkeleton = isLoading && videos.length === 0;
   const hasVideos = videos.length > 0;
-  const hasProcessingVideos = videos.some((v) => v.status === "processing" || v.status === "queued");
-
-  useQuery({
-    queryKey: ["videos", "polling"],
-    queryFn: async () => {
-      const { data } = await api.GET("/v1/videos", {});
-      if (data) queryClient.setQueryData(["videos"], data);
-      return data ?? null;
-    },
-    enabled: hasProcessingVideos,
-    refetchInterval: 10000,
-  });
 
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -262,9 +256,6 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-display font-bold text-text-primary tracking-tight">Videos</h1>
-            {isRefetching && (
-              <div className="h-4 w-4 rounded-full border-2 border-accent-motion border-t-transparent animate-spin opacity-50" />
-            )}
           </div>
           <p className="text-text-muted mt-1">Manage transcoded assets, renditions, and captions.</p>
         </div>
