@@ -51,7 +51,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 	_, err = js.AddConsumer("TRANSCODE", &nats.ConsumerConfig{
 		Durable:       "transcode_worker",
 		AckPolicy:     nats.AckExplicitPolicy,
-		MaxDeliver:    3,
+		MaxDeliver:    -1, // unlimited retries — handler decides via Term() or Nak()
 		AckWait:       30 * time.Minute, // transcode can take a long time
 		FilterSubject: "transcode.jobs",
 	})
@@ -103,7 +103,8 @@ func (c *Consumer) handleMessage(ctx context.Context, msg *nats.Msg) {
 	err := c.handler.Process(jobCtx, payload.VideoID, payload.SourceObjectKey, payload.TranscodeBucketID)
 	if err != nil {
 		c.log.Error("job failed for video %s: %v", payload.VideoID, err)
-		msg.Term() // Terminal error, job is marked as failed in DB, don't retry automatically
+		// Job is marked failed in DB by handler; Term to discard from queue
+		msg.Term()
 		return
 	}
 
