@@ -72,30 +72,7 @@ Get a single video. **Response `200`** — same shape as the list item.
 
 Permanently delete a video and all assets. **Response `204`**
 
----
----
 
-## Branding
-
-### `GET /branding`
-
-```json
-{ "position": "bottom-right", "opacity": 0.8, "is_active": true }
-```
-
-### `PUT /branding`
-
-```json
-{ "position": "bottom-right", "opacity": 0.8 }
-```
-
-Position values: `top-left` | `top-right` | `bottom-left` | `bottom-right` | `center`
-
-### `POST /branding/asset`
-
-Upload a watermark image (`multipart/form-data`). Field name: `asset`. Max 2 MB.
-
----
 
 ## API Keys
 
