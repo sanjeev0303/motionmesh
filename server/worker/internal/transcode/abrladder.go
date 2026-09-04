@@ -8,11 +8,9 @@ type Rendition struct {
 	Label   string
 }
 
-// allRenditions is the full ladder from 144p to 2160p.
+// allRenditions is the full ladder from 144p to 1080p.
 // Bitrates are tuned for H.264 @ these resolutions with a 6-second GOP.
 var allRenditions = []Rendition{
-	{Height: 2160, Bitrate: "15000k", MaxRate: "16500k", BufSize: "30000k", Label: "2160p"},
-	{Height: 1440, Bitrate: "9000k", MaxRate: "9900k", BufSize: "18000k", Label: "1440p"},
 	{Height: 1080, Bitrate: "5000k", MaxRate: "5500k", BufSize: "10000k", Label: "1080p"},
 	{Height: 720, Bitrate: "2800k", MaxRate: "3080k", BufSize: "5600k", Label: "720p"},
 	{Height: 480, Bitrate: "1400k", MaxRate: "1540k", BufSize: "2800k", Label: "480p"},
