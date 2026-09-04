@@ -246,6 +246,7 @@ export default function DashboardClient({
         />
       </div>
 
+
       {/* ── Quota Strip ── */}
       {subscription && (() => {
         const sub = subscription as any;
@@ -255,23 +256,27 @@ export default function DashboardClient({
         const txLimit      = sub.transcodeMinutesLimit ?? 0;
         const storagePct   = storageLimit > 0 ? Math.min((sub.storageUsedBytes / storageLimit) * 100, 100) : 0;
         const egressPct    = egressLimit  > 0 ? Math.min((sub.egressUsedBytes  / egressLimit)  * 100, 100) : 0;
-        const txPct        = txLimit      > 0 ? Math.min((sub.transcodeMinutesUsed / txLimit) * 100, 100) : 0;
+        const txPct        = txLimit      > 0 ? Math.min(((sub.transcodeMinutesUsed ?? 0) / txLimit) * 100, 100) : 0;
 
-        const bar = (label: string, pct: number, used: string, limit: string | number, color: string) => {
+        const planDotColor = plan === "free" ? "#F59E0B" : plan === "pro" ? "#22C55E" : "#00F0FF";
+
+        const bar = (label: string, pct: number, used: string, limit: string, barColor: string) => {
           const isOver = pct >= 95;
           const isWarn = pct >= 75 && !isOver;
+          const fillColor = isOver ? "#EF4444" : isWarn ? "#F59E0B" : barColor;
+          const textColor = isOver ? "#EF4444" : isWarn ? "#F59E0B" : undefined;
           return (
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[11px] text-text-muted font-medium">{label}</span>
-                <span className={`text-[10px] font-mono ${isOver ? "text-danger" : isWarn ? "text-warning" : "text-text-muted"}`}>
-                  {used}{limit !== -1 ? ` / ${limit}` : ""}
+                <span className="text-[10px] font-mono text-text-muted" style={textColor ? { color: textColor } : {}}>
+                  {used} / {limit}
                 </span>
               </div>
               <div className="h-1.5 rounded-full bg-bg-surface-raised overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-700 ${isOver ? "bg-danger" : isWarn ? "bg-warning" : `bg-${color}`}`}
-                  style={{ width: `${pct}%` }}
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${pct}%`, backgroundColor: fillColor }}
                 />
               </div>
             </div>
@@ -281,17 +286,23 @@ export default function DashboardClient({
         return (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 px-5 py-4 rounded-xl bg-bg-surface border border-border-subtle">
             <div className="flex items-center gap-2 flex-shrink-0">
-              <div className={`w-2 h-2 rounded-full ${plan === "free" ? "bg-warning" : plan === "pro" ? "bg-success" : "bg-accent-motion"}`} />
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: planDotColor }} />
               <span className="text-xs font-semibold text-text-primary capitalize">{plan} Plan</span>
             </div>
             <div className="flex-1 flex flex-col sm:flex-row gap-4 sm:gap-6">
-              {storageLimit !== -1 ? bar("Storage", storagePct, formatBytes(sub.storageUsedBytes ?? 0), formatBytes(storageLimit), "violet-500") : <div className="flex-1 text-[11px] text-text-muted">Storage: ∞</div>}
-              {egressLimit  !== -1 ? bar("Egress",   egressPct,  formatBytes(sub.egressUsedBytes  ?? 0), formatBytes(egressLimit),  "warning")    : <div className="flex-1 text-[11px] text-text-muted">Egress: ∞</div>}
-              {txLimit      !== -1 ? bar("Transcode", txPct, `${(sub.transcodeMinutesUsed ?? 0).toFixed(1)} min`, `${txLimit} min`, "pink-500") : <div className="flex-1 text-[11px] text-text-muted">Transcode: ∞</div>}
+              {storageLimit > 0
+                ? bar("Storage",   storagePct, formatBytes(sub.storageUsedBytes ?? 0),        formatBytes(storageLimit), "#8B5CF6")
+                : <div className="flex-1 text-[11px] text-text-muted">Storage: ∞</div>}
+              {egressLimit > 0
+                ? bar("Egress",    egressPct,  formatBytes(sub.egressUsedBytes  ?? 0),        formatBytes(egressLimit),  "#F59E0B")
+                : <div className="flex-1 text-[11px] text-text-muted">Egress: ∞</div>}
+              {txLimit > 0
+                ? bar("Transcode", txPct, `${(sub.transcodeMinutesUsed ?? 0).toFixed(1)} min`, `${txLimit} min`,          "#EC4899")
+                : <div className="flex-1 text-[11px] text-text-muted">Transcode: ∞</div>}
             </div>
             {plan === "free" && (
               <Link href="/dashboard/billing">
-                <span className="flex items-center gap-1 text-accent-motion text-xs font-medium whitespace-nowrap hover:underline">
+                <span className="flex items-center gap-1 text-xs font-medium whitespace-nowrap hover:underline" style={{ color: "#00F0FF" }}>
                   Upgrade <ArrowUpRight className="w-3 h-3" />
                 </span>
               </Link>
