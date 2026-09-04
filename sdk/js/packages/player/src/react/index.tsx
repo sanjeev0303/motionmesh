@@ -577,6 +577,7 @@ return motionmeshIcons;
       <DefaultVideoLayout
         thumbnails={signedThumbnailVtt}
         icons={layoutIcons}
+        smallLayoutWhen={false}
         slots={{
           googleCastButton: null,
           chaptersMenu: null,
