@@ -1,14 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { motionmesh } from "@motionmesh/sdk";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileCode2, Play, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { FileCode2, RefreshCw } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApi } from "@/lib/api-client";
 
 interface TranscodeJob {
   id: string;
@@ -20,22 +17,17 @@ interface TranscodeJob {
   updated_at: string;
 }
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  queued: "secondary",
-  processing: "default",
-  completed: "outline",
-  failed: "destructive",
+const STATUS_STYLES: Record<string, string> = {
+  queued:     "bg-bg-surface-raised text-text-muted",
+  processing: "bg-accent-motion/20 text-accent-motion border-accent-motion/30",
+  completed:  "bg-success/10 text-success border-success/20",
+  failed:     "bg-danger/10 text-danger border-danger/20",
 };
 
 function JobStatusBadge({ status, progress }: { status: string; progress: number }) {
   return (
     <div className="flex items-center gap-2">
-      <Badge variant={STATUS_VARIANT[status] ?? "secondary"} className={
-        status === "processing" ? "bg-accent-motion/20 text-accent-motion border-accent-motion/30" :
-        status === "completed" ? "bg-success/10 text-success border-success/20" :
-        status === "failed" ? "bg-danger/10 text-danger border-danger/20" :
-        "bg-bg-surface-raised text-text-muted"
-      }>
+      <Badge variant="outline" className={STATUS_STYLES[status] ?? STATUS_STYLES.queued}>
         {status}
       </Badge>
       {status === "processing" && progress > 0 && (
@@ -50,16 +42,15 @@ interface MediaConvertClientProps {
 }
 
 export function MediaConvertClient({ initialJobs }: MediaConvertClientProps) {
-  const [videoId, setVideoId] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
+  const api = useApi();
   const queryClient = useQueryClient();
 
   const { data: jobs = [], isFetching, isLoading } = useQuery<TranscodeJob[]>({
     queryKey: ["transcode-jobs"],
     queryFn: async () => {
-      const result = await motionmesh.mediaConverter.listJobs(50);
-      return (result as TranscodeJob[]) ?? [];
+      const { data, response } = await api.GET("/v1/jobs" as any, {});
+      if (!response.ok) return [];
+      return (data as unknown as TranscodeJob[]) ?? [];
     },
     initialData: initialJobs,
     refetchInterval: (query) => {
@@ -67,144 +58,94 @@ export function MediaConvertClient({ initialJobs }: MediaConvertClientProps) {
       const hasActive = rows.some((j) => j.status === "queued" || j.status === "processing");
       return hasActive ? 5000 : 30000;
     },
-    staleTime: 60000,
+    staleTime: 30000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
 
   const showSkeleton = isLoading && jobs.length === 0;
 
-  const handleCreateJob = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!videoId.trim()) {
-      toast({ title: "Validation Error", description: "Please enter a valid Video ID.", variant: "destructive" });
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      await motionmesh.mediaConverter.createJob(videoId.trim());
-      toast({ title: "Transcode Job Created", description: `Queued transcoding for video ${videoId}` });
-      setVideoId("");
-      await queryClient.invalidateQueries({ queryKey: ["transcode-jobs"] });
-    } catch (err: any) {
-      toast({ title: "Failed to create job", description: err.message || "An unexpected error occurred.", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-display font-bold text-text-primary tracking-tight mb-2">Media Convert</h1>
-        <p className="text-text-muted">Trigger and manage on-demand transcode jobs for your videos.</p>
-      </div>
-
-      <div className="p-6 rounded-lg border border-border-subtle bg-bg-surface space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium text-text-primary mb-1">Create Job</h3>
-          <p className="text-sm text-text-muted mb-4">Manually trigger a transcoding job for an existing video to generate HLS renditions.</p>
-          <form onSubmit={handleCreateJob} className="flex gap-4 items-end max-w-xl">
-            <div className="flex-1 space-y-2">
-              <label htmlFor="videoId" className="text-sm font-medium text-text-primary">
-                Video ID
-              </label>
-              <Input
-                id="videoId"
-                placeholder="e.g. 9d105ef9-8e7b-4d2c-86b2-82021219ed1d"
-                value={videoId}
-                onChange={(e) => setVideoId(e.target.value)}
-                className="bg-bg-base border-border-subtle"
-                disabled={isSubmitting}
-              />
-            </div>
-            <Button type="submit" disabled={isSubmitting} className="bg-accent-motion text-white hover:bg-accent-motion/90">
-              <Play className="mr-2 h-4 w-4" />
-              {isSubmitting ? "Queuing..." : "Create Job"}
-            </Button>
-          </form>
+          <h1 className="text-3xl font-display font-bold text-text-primary tracking-tight mb-2">Media Convert</h1>
+          <p className="text-text-muted">Monitor transcoding jobs for your uploaded videos.</p>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => queryClient.invalidateQueries({ queryKey: ["transcode-jobs"] })}
+          disabled={isFetching}
+          className="text-text-muted hover:text-text-primary gap-1.5"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-medium text-text-primary">Recent Jobs</h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => queryClient.invalidateQueries({ queryKey: ["transcode-jobs"] })}
-            disabled={isFetching}
-            className="text-text-muted hover:text-text-primary gap-1.5"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+      {showSkeleton ? (
+        <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+          <Table>
+            <TableHeader className="bg-bg-surface-raised">
+              <TableRow className="border-border-subtle">
+                <TableHead><div className="h-4 bg-bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
+                <TableHead><div className="h-4 bg-bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
+                <TableHead><div className="h-4 bg-bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
+                <TableHead className="text-right"><div className="h-4 bg-bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[1, 2, 3].map(i => (
+                <TableRow key={i} className="border-border-subtle">
+                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-3/4 animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-3/4 animate-pulse" /></TableCell>
+                  <TableCell><div className="h-6 bg-bg-surface-raised/30 rounded w-20 animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
-
-        {showSkeleton ? (
-          <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
-            <Table>
-              <TableHeader className="bg-bg-surface-raised">
-                <TableRow className="border-border-subtle">
-                  <TableHead><div className="h-4 bg-bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
-                  <TableHead><div className="h-4 bg-bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
-                  <TableHead><div className="h-4 bg-bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
-                  <TableHead className="text-right"><div className="h-4 bg-bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[1, 2, 3].map(i => (
-                  <TableRow key={i} className="border-border-subtle">
-                    <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-3/4 animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-3/4 animate-pulse" /></TableCell>
-                    <TableCell><div className="h-6 bg-bg-surface-raised/30 rounded w-20 animate-pulse" /></TableCell>
-                    <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
-            <Table>
-              <TableHeader className="bg-bg-surface-raised">
+      ) : (
+        <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+          <Table>
+            <TableHeader className="bg-bg-surface-raised">
+              <TableRow className="border-border-subtle hover:bg-transparent">
+                <TableHead className="text-text-muted font-medium">Job ID</TableHead>
+                <TableHead className="text-text-muted font-medium">Video ID</TableHead>
+                <TableHead className="text-text-muted font-medium">Status</TableHead>
+                <TableHead className="text-text-muted font-medium text-right">Created At</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {jobs.length === 0 ? (
                 <TableRow className="border-border-subtle hover:bg-transparent">
-                  <TableHead className="text-text-muted font-medium">Job ID</TableHead>
-                  <TableHead className="text-text-muted font-medium">Video ID</TableHead>
-                  <TableHead className="text-text-muted font-medium">Status</TableHead>
-                  <TableHead className="text-text-muted font-medium text-right">Created At</TableHead>
+                  <TableCell colSpan={4} className="h-32 text-center text-text-muted">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <FileCode2 className="h-8 w-8 text-border-subtle opacity-50" />
+                      <p>No transcode jobs yet. Upload a video to get started.</p>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {jobs.length === 0 ? (
-                  <TableRow className="border-border-subtle hover:bg-transparent">
-                    <TableCell colSpan={4} className="h-32 text-center text-text-muted">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <FileCode2 className="h-8 w-8 text-border-subtle" />
-                        <p>No transcode jobs yet. Upload a video to get started.</p>
-                      </div>
+              ) : (
+                jobs.map((job) => (
+                  <TableRow key={job.id} className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors">
+                    <TableCell className="font-mono text-xs text-text-muted">{job.id.slice(0, 8)}…</TableCell>
+                    <TableCell className="font-mono text-xs text-text-primary">{job.video_id.slice(0, 8)}…</TableCell>
+                    <TableCell>
+                      <JobStatusBadge status={job.status} progress={job.progress_percent} />
+                    </TableCell>
+                    <TableCell suppressHydrationWarning className="text-text-muted text-sm text-right">
+                      {new Date(job.created_at).toLocaleString()}
                     </TableCell>
                   </TableRow>
-                ) : (
-                  jobs.map((job) => (
-                    <TableRow key={job.id} className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors">
-                      <TableCell className="font-mono text-xs text-text-muted max-w-[120px] truncate">{job.id.slice(0, 8)}…</TableCell>
-                      <TableCell className="font-mono text-xs text-text-primary max-w-[120px] truncate">{job.video_id.slice(0, 8)}…</TableCell>
-                      <TableCell>
-                        <JobStatusBadge status={job.status} progress={job.progress_percent} />
-                      </TableCell>
-                      <TableCell suppressHydrationWarning className="text-text-muted text-sm text-right">
-                        {new Date(job.created_at).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </div>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }
