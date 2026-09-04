@@ -25,8 +25,6 @@ import (
 	authpostgres "github.com/motionmesh/server/api/internal/auth/postgres"
 	"github.com/motionmesh/server/api/internal/billing"
 	billingpostgres "github.com/motionmesh/server/api/internal/billing/postgres"
-	"github.com/motionmesh/server/api/internal/branding"
-	brandingpostgres "github.com/motionmesh/server/api/internal/branding/postgres"
 	"github.com/motionmesh/server/api/internal/buckets"
 	bucketspostgres "github.com/motionmesh/server/api/internal/buckets/postgres"
 	apimiddleware "github.com/motionmesh/server/api/internal/middleware"
@@ -35,7 +33,6 @@ import (
 	"github.com/motionmesh/server/api/internal/transcode"
 	"github.com/motionmesh/server/api/internal/videos"
 	videospostgres "github.com/motionmesh/server/api/internal/videos/postgres"
-	sharedbranding "github.com/motionmesh/server/shared/branding"
 	"github.com/motionmesh/server/shared/config"
 	"github.com/motionmesh/server/shared/logger"
 	"github.com/motionmesh/server/shared/models"
@@ -125,10 +122,6 @@ func main() {
 	var bucketRepo buckets.BucketRepository = bucketspostgres.NewRepository(db)
 	bucketSvc := buckets.NewService(bucketRepo, storageAdapter)
 
-	// ── Branding ──────────────────────────────────────────────────────────────
-	var brandingRepo sharedbranding.BrandingRepository = brandingpostgres.NewRepository(db)
-	brandingSvc := branding.NewService(brandingRepo, storageAdapter, cfg.StorageBucket)
-
 	// ── Videos ────────────────────────────────────────────────────────────────
 	videosRepo := videospostgres.NewRepository(db)
 	videosSvc := videos.NewService(videosRepo)
@@ -210,13 +203,6 @@ func main() {
 		r.Route("/v1/buckets", func(r chi.Router) {
 			bucketsHandler := buckets.NewHandler(bucketSvc)
 			bucketsHandler.RegisterRoutes(r)
-		})
-
-		// Branding (pro tier only)
-		r.Route("/v1/branding", func(r chi.Router) {
-			r.Use(apimiddleware.RequirePlan("pro", billingSvc))
-			brandingHandler := branding.NewHandler(brandingSvc)
-			brandingHandler.RegisterRoutes(r)
 		})
 
 		// Billing

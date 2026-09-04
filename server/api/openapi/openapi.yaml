@@ -133,44 +133,7 @@ paths:
                 properties:
                   balance:
                     type: integer
-  /v1/branding:
-    get:
-      summary: Get active watermark
-      responses:
-        '200':
-          description: OK
-    put:
-      summary: Update watermark configuration
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                position:
-                  type: string
-                opacity:
-                  type: number
-      responses:
-        '200':
-          description: OK
-  /v1/branding/asset:
-    post:
-      summary: Upload watermark asset
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                asset:
-                  type: string
-                  format: binary
-      responses:
-        '200':
-          description: OK
+
   /v1/videos:
     get:
       summary: List videos

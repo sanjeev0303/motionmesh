@@ -23,15 +23,7 @@ const CHANGELOG_ENTRIES = [
       "Multi-part uploads now automatically retry failed chunks with exponential backoff.",
     type: "improvement" as const,
   },
-  {
-    id: "chg_3",
-    date: "2024-04-28",
-    version: "v1.1.0",
-    title: "Player Branding",
-    description:
-      "Introduced custom watermark/branding options, and per-video player configuration.",
-    type: "feature" as const,
-  },
+
 ];
 
 const typeStyles: Record<string, string> = {

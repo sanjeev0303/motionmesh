@@ -14,7 +14,6 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/motionmesh/server/shared/branding"
 	"github.com/motionmesh/server/shared/logger"
 	"github.com/motionmesh/server/shared/models"
 	"github.com/motionmesh/server/shared/storage"
@@ -31,20 +30,18 @@ type Handler struct {
 	store                  storage.ObjectStorage
 	uploader               *uploader.Uploader
 	captions               *captions.Client
-	brandingRepo           branding.BrandingRepository
 	log                    *logger.Logger
 	nc                     *nats.Conn
 	fallbackSourceBucket   string // physical S3 name from STORAGE_BUCKET env
 	fallbackTranscodeBucket string // physical S3 name from STORAGE_TRANSCODE_BUCKET env
 }
 
-func NewHandler(db *sql.DB, store storage.ObjectStorage, up *uploader.Uploader, capClient *captions.Client, brandingRepo branding.BrandingRepository, log *logger.Logger, nc *nats.Conn, sourceBucket, transcodeBucket string) *Handler {
+func NewHandler(db *sql.DB, store storage.ObjectStorage, up *uploader.Uploader, capClient *captions.Client, log *logger.Logger, nc *nats.Conn, sourceBucket, transcodeBucket string) *Handler {
 	return &Handler{
 		db:                     db,
 		store:                  store,
 		uploader:               up,
 		captions:               capClient,
-		brandingRepo:           brandingRepo,
 		log:                    log,
 		nc:                     nc,
 		fallbackSourceBucket:   sourceBucket,
@@ -170,29 +167,13 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 	// 4. ABR Ladder
 	renditions := transcode.BuildLadder(probeRes.Height)
 
-	var watermark *models.WatermarkMetadata
-	if !alreadyEncoded {
-		h.log.Info("Checking for watermark for video: %s", videoID)
-		watermark, _ = h.brandingRepo.GetActiveWatermark(ctx, accountID)
-		if watermark != nil {
-			h.log.Info("Downloading watermark for video: %s", videoID)
-			wmPath := filepath.Join(tmpDir, "watermark.png")
-			if err := h.downloadSource(ctx, watermark.AssetObjectKey, wmPath, &sourceBucketName); err == nil {
-				watermark.AssetObjectKey = wmPath
-			} else {
-				h.log.Error("failed to download watermark %s: %v", watermark.AssetObjectKey, err)
-				watermark = nil
-			}
-		}
-	}
-
 	eg, egCtx := errgroup.WithContext(ctx)
 
 	// Concurrency 1: Encode and upload HLS
 	if !alreadyEncoded {
 		eg.Go(func() error {
 			h.log.Info("Starting HLS encode for video: %s", videoID)
-			_, err := transcode.Encode(egCtx, sourcePath, probeRes, renditions, watermark, tmpDir, func(percent int) {
+			_, err := transcode.Encode(egCtx, sourcePath, probeRes, renditions, nil, tmpDir, func(percent int) {
 				h.updateJobProgress(egCtx, videoID, percent)
 			})
 			if err != nil {

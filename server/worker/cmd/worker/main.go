@@ -15,7 +15,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/nats-io/nats.go"
 
-	brandingpostgres "github.com/motionmesh/server/shared/branding/postgres"
 	"github.com/motionmesh/server/shared/config"
 	"github.com/motionmesh/server/shared/logger"
 	"github.com/motionmesh/server/shared/storage"
@@ -75,7 +74,6 @@ func main() {
 	}
 
 	// ── Components ───────────────────────────────────────────────────────────
-	brandingRepo := brandingpostgres.NewRepository(db)
 	up := uploader.NewUploader(storageAdapter)
 	capClient := captions.NewClient(cfg.CaptionsSidecarURL, &http.Client{Timeout: 30 * time.Minute})
 
@@ -85,7 +83,7 @@ func main() {
 	if transcodeBucket == "" {
 		transcodeBucket = cfg.StorageBucket // single-bucket setup
 	}
-	jobHandler := job.NewHandler(db, storageAdapter, up, capClient, brandingRepo, log, nc, cfg.StorageBucket, transcodeBucket)
+	jobHandler := job.NewHandler(db, storageAdapter, up, capClient, log, nc, cfg.StorageBucket, transcodeBucket)
 	consumer := job.NewConsumer(nc, jobHandler, log)
 
 	// ── Start Consumer ───────────────────────────────────────────────────────

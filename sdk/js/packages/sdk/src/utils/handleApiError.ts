@@ -4,7 +4,7 @@
  *
  * @example
  * try {
- *   await client.branding.update({ logoUrl: "https://..." });
+ *   await client.videos.list();
  * } catch (e) {
  *   if (e instanceof PlanRequiredError) {
  *     showUpgradePrompt(e.requiredPlan);
