@@ -172,6 +172,7 @@ func main() {
 			authHandler.RegisterRoutes(r)
 		})
 
+		// Videos — all routes; quota is enforced inside HandleUploadInitiation
 		r.Route("/v1/videos", func(r chi.Router) {
 			videosHandler := videos.NewHandler(videosSvc, storageAdapter, transcodeSvc, bucketSvc, cfg.StorageBucket)
 			videosHandler.RegisterRoutes(r)
@@ -205,8 +206,9 @@ func main() {
 			bucketsHandler.RegisterRoutes(r)
 		})
 
-		// Billing
+		// Billing — all plans can access billing; RequirePlan enforced per endpoint inside handler
 		r.Route("/v1/billing", func(r chi.Router) {
+			r.Use(apimiddleware.RequirePlan("free", billingSvc))
 			billingHandler := billing.NewHandler(billingSvc)
 			billingHandler.RegisterRoutes(r)
 		})

@@ -88,7 +88,7 @@ func (s *Service) CheckBalance(ctx context.Context, accountID, resourceType stri
 	if err != nil {
 		return err
 	}
-	
+
 	// Cache for 60 seconds
 	s.rdb.Set(ctx, cacheKey, used, 60*time.Second)
 
@@ -96,6 +96,48 @@ func (s *Service) CheckBalance(ctx context.Context, accountID, resourceType stri
 		return errors.New("billing: plan limit reached for " + resourceType)
 	}
 	return nil
+}
+
+// CheckQuota implements the QuotaChecker interface for the EnforceQuota middleware.
+// Returns (exceeded, limit) where limit=-1 means unlimited.
+func (s *Service) CheckQuota(ctx context.Context, accountID, resource string, quota models.PlanQuota) (bool, int64) {
+	// Unlimited check (-1)
+	limit := int64(0)
+	switch resource {
+	case "storage_bytes":
+		limit = quota.StorageBytes
+	case "egress_bytes":
+		limit = quota.EgressBytes
+	case "transcode_minutes":
+		limit = quota.TranscodeMinutes
+	case "videos":
+		limit = quota.MaxVideos
+	case "buckets":
+		limit = quota.MaxBuckets
+	case "api_keys":
+		limit = quota.MaxAPIKeys
+	default:
+		return false, -1
+	}
+
+	if limit == -1 {
+		return false, -1 // unlimited
+	}
+
+	cacheKey := fmt.Sprintf("usage:%s:%s", accountID, resource)
+	var used int64
+	cached, err := s.rdb.Get(ctx, cacheKey).Int64()
+	if err == nil {
+		used = cached
+	} else {
+		used, err = s.repo.GetAggregatedUsage(ctx, accountID, resource)
+		if err != nil {
+			return false, limit
+		}
+		s.rdb.Set(ctx, cacheKey, used, 60*time.Second)
+	}
+
+	return used >= limit, limit
 }
 
 // GetAccountPlan fetches the plan for an account, preferring the Redis cache.
