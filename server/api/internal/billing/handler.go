@@ -91,7 +91,7 @@ func (h *Handler) getSubscription(w http.ResponseWriter, r *http.Request) {
 		"prepaidBalance":        float64(account.Balance) / 100.0, // Convert cents to dollars
 		"storageUsedBytes":      storageUsedBytes,
 		"egressUsedBytes":       egressUsedBytes,
-		"transcodeMinutesUsed":  transcodeSeconds / 60,
+		"transcodeMinutesUsed":  float64(transcodeSeconds) / 60.0,
 		"transcodeMinutesLimit": 5000,
 	})
 }
@@ -124,7 +124,7 @@ func (h *Handler) getUsageEvents(w http.ResponseWriter, r *http.Request) {
 		if ev.EventType == "storage_bytes" || ev.EventType == "bandwidth_bytes" {
 			qtyStr = fmt.Sprintf("%.2f GB", float64(ev.Quantity)/(1024*1024*1024))
 		} else if ev.EventType == "video_transcode_seconds" {
-			qtyStr = fmt.Sprintf("%d min", ev.Quantity/60)
+			qtyStr = fmt.Sprintf("%.2f min", float64(ev.Quantity)/60.0)
 		}
 
 		resp = append(resp, usageResponse{
