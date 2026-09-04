@@ -34,3 +34,8 @@ func (s *Service) InitiateUpload(ctx context.Context, video *models.Video) (*mod
 	video.Status = models.VideoStatusQueued
 	return s.repo.Create(ctx, video)
 }
+
+func (s *Service) CountVideos(ctx context.Context, accountID string) (int64, error) {
+	return s.repo.CountByAccount(ctx, accountID)
+}
+

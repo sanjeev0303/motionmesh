@@ -20,11 +20,20 @@ import { formatBytes } from "@/lib/utils";
 interface Subscription {
   plan: string;
   status: string;
+  // Usage (from API)
   storageUsedBytes?: number;
+  storageLimitBytes?: number;
   egressUsedBytes?: number;
+  egressLimitBytes?: number;
   transcodeMinutesUsed?: number;
   transcodeMinutesLimit?: number;
   prepaidBalance?: number;
+  maxVideos?: number;
+  maxBuckets?: number;
+  maxAPIKeys?: number;
+  transcodeQuality?: string;
+  maxVideoSizeMB?: number;
+  maxVideoDurationSec?: number;
 }
 
 interface UsageEvent {
@@ -40,18 +49,6 @@ interface UsageClientProps {
   initialSubscription: Subscription | null;
   initialInvoices: UsageEvent[];
 }
-
-// Plan limits by tier (mirrors server/api/internal/middleware/plan.go)
-const PLAN_LIMITS: Record<string, {
-  storageGB: number; egressGB: number; transcodeMin: number;
-  maxVideos: number; maxBuckets: number; maxAPIKeys: number;
-  transcodeQuality: string;
-}> = {
-  free:       { storageGB: 5,    egressGB: 10,  transcodeMin: 30,   maxVideos: 20, maxBuckets: 1,  maxAPIKeys: 2,  transcodeQuality: "SD" },
-  starter:    { storageGB: 10,   egressGB: 20,  transcodeMin: 60,   maxVideos: -1, maxBuckets: 3,  maxAPIKeys: 5,  transcodeQuality: "HD" },
-  pro:        { storageGB: 500,  egressGB: 200, transcodeMin: 2000, maxVideos: -1, maxBuckets: 10, maxAPIKeys: 20, transcodeQuality: "HD" },
-  enterprise: { storageGB: -1,   egressGB: -1,  transcodeMin: -1,   maxVideos: -1, maxBuckets: -1, maxAPIKeys: -1, transcodeQuality: "HD" },
-};
 
 const OVERAGE_RATES = { storage: 0.030, egress: 0.015, transcode: 0.006 };
 
@@ -198,9 +195,13 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
     refetchOnWindowFocus: true,
   });
 
-  const plan     = (subscription?.plan ?? "free").toLowerCase();
-  const limits   = PLAN_LIMITS[plan] ?? PLAN_LIMITS["free"];
+  const plan   = (subscription?.plan ?? "free").toLowerCase();
   const events: UsageEvent[] = invoices ?? [];
+
+  // Limits come directly from the API (plan-aware, single source of truth)
+  const storageLimitBytes   = subscription?.storageLimitBytes   ?? 0;
+  const egressLimitBytes    = subscription?.egressLimitBytes    ?? 0;
+  const transcodeMinLimit   = subscription?.transcodeMinutesLimit ?? 0;
 
   const billing = {
     prepaidBalance:       subscription?.prepaidBalance ?? 0,
@@ -209,15 +210,17 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
     transcodeMinutesUsed: subscription?.transcodeMinutesUsed ?? 0,
   };
 
-  const storageUsedGB     = billing.storageUsedBytes / (1024 ** 3);
-  const egressUsedGB      = billing.egressUsedBytes  / (1024 ** 3);
-  const transcodeUsedMin  = billing.transcodeMinutesUsed;
+  const storageUsedGB    = billing.storageUsedBytes / (1024 ** 3);
+  const egressUsedGB     = billing.egressUsedBytes  / (1024 ** 3);
+  const transcodeUsedMin = billing.transcodeMinutesUsed;
+  const storageLimitGB   = storageLimitBytes / (1024 ** 3);
+  const egressLimitGB    = egressLimitBytes  / (1024 ** 3);
 
-  // Overages (pay-as-you-go cost on top of included)
-  const storageOverage    = Math.max(0, storageUsedGB    - (plan === "free" ? 0 : limits.storageGB));
-  const egressOverage     = Math.max(0, egressUsedGB     - (plan === "free" ? 0 : limits.egressGB));
-  const transcodeOverage  = Math.max(0, transcodeUsedMin - (plan === "free" ? 0 : limits.transcodeMin));
-  const estimatedOverage  = storageOverage * OVERAGE_RATES.storage + egressOverage * OVERAGE_RATES.egress + transcodeOverage * OVERAGE_RATES.transcode;
+  // Overages beyond included quota
+  const storageOverage   = storageLimitGB   > 0 ? Math.max(0, storageUsedGB    - storageLimitGB)   : 0;
+  const egressOverage    = egressLimitGB    > 0 ? Math.max(0, egressUsedGB     - egressLimitGB)    : 0;
+  const transcodeOverage = transcodeMinLimit > 0 ? Math.max(0, transcodeUsedMin - transcodeMinLimit) : 0;
+  const estimatedOverage = storageOverage * OVERAGE_RATES.storage + egressOverage * OVERAGE_RATES.egress + transcodeOverage * OVERAGE_RATES.transcode;
 
   const currentMonthCost = useMemo(() => events.reduce((s, ev) => s + (ev.cost || 0), 0), [events]);
 
@@ -311,21 +314,21 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <QuotaMeter
             label="Storage" unit="per month" icon={HardDrive} color="violet-500"
-            used={billing.storageUsedBytes} limitVal={limits.storageGB * 1024 ** 3}
-            formatFn={(v) => formatBytes(v)} isUnlimited={limits.storageGB === -1}
-            isExceeded={limits.storageGB !== -1 && storageUsedGB >= limits.storageGB}
+            used={billing.storageUsedBytes} limitVal={storageLimitBytes}
+            formatFn={(v) => formatBytes(v)} isUnlimited={storageLimitBytes === -1}
+            isExceeded={storageLimitBytes > 0 && billing.storageUsedBytes >= storageLimitBytes}
           />
           <QuotaMeter
             label="Egress" unit="outbound bandwidth" icon={Network} color="warning"
-            used={billing.egressUsedBytes} limitVal={limits.egressGB * 1024 ** 3}
-            formatFn={(v) => formatBytes(v)} isUnlimited={limits.egressGB === -1}
-            isExceeded={limits.egressGB !== -1 && egressUsedGB >= limits.egressGB}
+            used={billing.egressUsedBytes} limitVal={egressLimitBytes}
+            formatFn={(v) => formatBytes(v)} isUnlimited={egressLimitBytes === -1}
+            isExceeded={egressLimitBytes > 0 && billing.egressUsedBytes >= egressLimitBytes}
           />
           <QuotaMeter
             label="Transcoding" unit="compute minutes" icon={Zap} color="pink-500"
-            used={transcodeUsedMin} limitVal={limits.transcodeMin}
-            formatFn={(v) => `${v.toFixed(1)} min`} isUnlimited={limits.transcodeMin === -1}
-            isExceeded={limits.transcodeMin !== -1 && transcodeUsedMin >= limits.transcodeMin}
+            used={transcodeUsedMin} limitVal={transcodeMinLimit}
+            formatFn={(v) => `${v.toFixed(1)} min`} isUnlimited={transcodeMinLimit === -1}
+            isExceeded={transcodeMinLimit > 0 && transcodeUsedMin >= transcodeMinLimit}
           />
         </div>
         {plan === "free" && (

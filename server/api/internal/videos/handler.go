@@ -183,6 +183,43 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
+
+	// ── Quota enforcement ──────────────────────────────────────────────────────
+	quota := quotaForPlan(acc.Plan)
+
+	// 1. File size limit
+	if quota.MaxVideoSizeMB > 0 {
+		maxBytes := float64(quota.MaxVideoSizeMB) * 1024 * 1024
+		if req.SizeBytes > maxBytes {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusPaymentRequired)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "file_too_large",
+				"plan":    acc.Plan,
+				"limit":   fmt.Sprintf("%d MB", quota.MaxVideoSizeMB),
+				"message": fmt.Sprintf("File exceeds the %d MB limit for the %s plan.", quota.MaxVideoSizeMB, acc.Plan),
+			})
+			return
+		}
+	}
+
+	// 2. Max video count limit
+	if quota.MaxVideos > 0 {
+		count, err := h.svc.CountVideos(r.Context(), acc.ID)
+		if err == nil && count >= quota.MaxVideos {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusPaymentRequired)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "video_limit_reached",
+				"plan":    acc.Plan,
+				"limit":   quota.MaxVideos,
+				"message": fmt.Sprintf("You have reached the %d video limit for the %s plan.", quota.MaxVideos, acc.Plan),
+			})
+			return
+		}
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────
 	bucketIDVal := ""
 	transcodeBucketIDVal := ""
 	if req.BucketID != nil { bucketIDVal = *req.BucketID }
@@ -280,6 +317,20 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 		"upload_url": uploadURL,
 		"object_key": objectKey,
 	})
+}
+
+// quotaForPlan mirrors middleware.PlanLimits for use inside the videos handler.
+func quotaForPlan(plan string) models.PlanQuota {
+	limits := map[string]models.PlanQuota{
+		"free":       {StorageBytes: 5 << 30, TranscodeMinutes: 30, MaxVideos: 20, MaxVideoSizeMB: 200, MaxVideoDurationSec: 300},
+		"starter":    {StorageBytes: 10 << 30, TranscodeMinutes: 60, MaxVideos: -1, MaxVideoSizeMB: 2048, MaxVideoDurationSec: 3600},
+		"pro":        {StorageBytes: 500 << 30, TranscodeMinutes: 2000, MaxVideos: -1, MaxVideoSizeMB: 10240, MaxVideoDurationSec: 14400},
+		"enterprise": {StorageBytes: -1, TranscodeMinutes: -1, MaxVideos: -1, MaxVideoSizeMB: -1, MaxVideoDurationSec: -1},
+	}
+	if q, ok := limits[plan]; ok {
+		return q
+	}
+	return limits["free"]
 }
 
 func (h *Handler) HandleProxyUpload(w http.ResponseWriter, r *http.Request) {

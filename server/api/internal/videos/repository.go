@@ -14,4 +14,6 @@ type VideoRepository interface {
 	Create(ctx context.Context, video *models.Video) (*models.Video, error)
 	UpdateStatus(ctx context.Context, id, accountID string, status models.VideoStatus) error
 	SetThumbnailKeys(ctx context.Context, id, accountID string, thumbnail, sprite, preview *string) error
+	CountByAccount(ctx context.Context, accountID string) (int64, error)
 }
+

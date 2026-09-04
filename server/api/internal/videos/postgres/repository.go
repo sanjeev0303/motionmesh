@@ -132,3 +132,12 @@ func (r *Repository) SetThumbnailKeys(ctx context.Context, id, accountID string,
 	)
 	return err
 }
+
+func (r *Repository) CountByAccount(ctx context.Context, accountID string) (int64, error) {
+	var count int64
+	err := r.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM videos WHERE account_id = $1`, accountID,
+	).Scan(&count)
+	return count, err
+}
+

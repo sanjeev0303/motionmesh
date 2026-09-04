@@ -84,16 +84,84 @@ func (h *Handler) getSubscription(w http.ResponseWriter, r *http.Request) {
 	egressUsedBytes, _ := h.service.GetAggregatedUsage(r.Context(), account.ID, "bandwidth_bytes")
 	transcodeSeconds, _ := h.service.GetAggregatedUsage(r.Context(), account.ID, "video_transcode_seconds")
 
+	// Resolve plan limits dynamically from middleware.PlanLimits
+	quota := planLimits(account.Plan)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"plan":                  account.Plan,
-		"status":                account.Status,
-		"prepaidBalance":        float64(account.Balance) / 100.0, // Convert cents to dollars
-		"storageUsedBytes":      storageUsedBytes,
-		"egressUsedBytes":       egressUsedBytes,
-		"transcodeMinutesUsed":  float64(transcodeSeconds) / 60.0,
-		"transcodeMinutesLimit": 5000,
+		"plan":                   account.Plan,
+		"status":                 account.Status,
+		"prepaidBalance":         float64(account.Balance) / 100.0,
+		"storageUsedBytes":       storageUsedBytes,
+		"storageLimitBytes":      quota.StorageBytes,
+		"egressUsedBytes":        egressUsedBytes,
+		"egressLimitBytes":       quota.EgressBytes,
+		"transcodeMinutesUsed":   float64(transcodeSeconds) / 60.0,
+		"transcodeMinutesLimit":  quota.TranscodeMinutes,
+		"maxVideos":              quota.MaxVideos,
+		"maxBuckets":             quota.MaxBuckets,
+		"maxAPIKeys":             quota.MaxAPIKeys,
+		"transcodeQuality":       quota.TranscodeQuality,
+		"maxVideoSizeMB":         quota.MaxVideoSizeMB,
+		"maxVideoDurationSec":    quota.MaxVideoDurationSec,
 	})
+}
+
+// planLimits returns hard limits for a plan tier. Mirrors middleware.PlanLimits.
+func planLimits(plan string) models.PlanQuota {
+	limits := map[string]models.PlanQuota{
+		"free": {
+			StorageBytes: 5 * 1024 * 1024 * 1024, EgressBytes: 10 * 1024 * 1024 * 1024,
+			TranscodeMinutes: 30, MaxVideos: 20, MaxBuckets: 1, MaxAPIKeys: 2,
+			MaxVideoSizeMB: 200, MaxVideoDurationSec: 300, TranscodeQuality: "sd",
+		},
+		"starter": {
+			StorageBytes: 10 * 1024 * 1024 * 1024, EgressBytes: 20 * 1024 * 1024 * 1024,
+			TranscodeMinutes: 60, MaxVideos: -1, MaxBuckets: 3, MaxAPIKeys: 5,
+			MaxVideoSizeMB: 2048, MaxVideoDurationSec: 3600, TranscodeQuality: "hd",
+		},
+		"pro": {
+			StorageBytes: 500 * 1024 * 1024 * 1024, EgressBytes: 200 * 1024 * 1024 * 1024,
+			TranscodeMinutes: 2000, MaxVideos: -1, MaxBuckets: 10, MaxAPIKeys: 20,
+			MaxVideoSizeMB: 10240, MaxVideoDurationSec: 14400, TranscodeQuality: "hd",
+		},
+		"enterprise": {
+			StorageBytes: -1, EgressBytes: -1, TranscodeMinutes: -1,
+			MaxVideos: -1, MaxBuckets: -1, MaxAPIKeys: -1,
+			MaxVideoSizeMB: -1, MaxVideoDurationSec: -1, TranscodeQuality: "hd",
+		},
+	}
+	if q, ok := limits[plan]; ok {
+		return q
+	}
+	return limits["free"]
+}
+
+// Billing rates (AWS cost + 30% margin, stored in cents per unit)
+const (
+	rateStoragePerGBMonthCents  = 3.0   // $0.030
+	rateEgressPerGBCents        = 1.5   // $0.015
+	rateTranscodeSDPerMinCents  = 0.6   // $0.006
+	rateTranscodeHDPerMinCents  = 1.2   // $0.012
+)
+
+// computeEventCost calculates the USD cost for a usage event.
+func computeEventCost(eventType string, quantity int64, quality string) float64 {
+	switch eventType {
+	case "storage_bytes":
+		gb := float64(quantity) / (1024 * 1024 * 1024)
+		return gb * rateStoragePerGBMonthCents / 100.0
+	case "bandwidth_bytes":
+		gb := float64(quantity) / (1024 * 1024 * 1024)
+		return gb * rateEgressPerGBCents / 100.0
+	case "video_transcode_seconds":
+		minutes := float64(quantity) / 60.0
+		if quality == "hd" {
+			return minutes * rateTranscodeHDPerMinCents / 100.0
+		}
+		return minutes * rateTranscodeSDPerMinCents / 100.0
+	}
+	return 0
 }
 
 func (h *Handler) getUsageEvents(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +176,8 @@ func (h *Handler) getUsageEvents(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	quality := planLimits(account.Plan).TranscodeQuality
 
 	type usageResponse struct {
 		ID       string  `json:"id"`
@@ -127,13 +197,24 @@ func (h *Handler) getUsageEvents(w http.ResponseWriter, r *http.Request) {
 			qtyStr = fmt.Sprintf("%.2f min", float64(ev.Quantity)/60.0)
 		}
 
+		// Map internal event types to display names
+		displayType := ev.EventType
+		switch ev.EventType {
+		case "storage_bytes":
+			displayType = "storage"
+		case "bandwidth_bytes":
+			displayType = "egress"
+		case "video_transcode_seconds":
+			displayType = "transcode"
+		}
+
 		resp = append(resp, usageResponse{
 			ID:       ev.ID,
 			Date:     ev.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			Type:     ev.EventType,
+			Type:     displayType,
 			Resource: "System",
 			Quantity: qtyStr,
-			Cost:     0, // Need to implement pricing logic if cost > 0
+			Cost:     computeEventCost(ev.EventType, ev.Quantity, quality),
 		})
 	}
 
@@ -144,6 +225,7 @@ func (h *Handler) getUsageEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
+
 
 func (h *Handler) createPortalSession(w http.ResponseWriter, r *http.Request) {
 	account, ok := r.Context().Value(auth.AccountContextKey).(*models.Account)
