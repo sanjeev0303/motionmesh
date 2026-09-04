@@ -10,6 +10,7 @@ import { useApi } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { Video } from "@/lib/types";
 import { motionmesh } from "@motionmesh/sdk";
+import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
 
 export default function DashboardClient({ 
   initialBuckets, 
@@ -198,7 +199,9 @@ export default function DashboardClient({
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <DashboardCharts buckets={serverBuckets || []} videos={videos} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
         <div className="lg:col-span-2 space-y-8">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
