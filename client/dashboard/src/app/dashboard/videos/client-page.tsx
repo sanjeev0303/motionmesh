@@ -110,12 +110,20 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
 
       if (file.size <= MULTIPART_THRESHOLD) {
         // ── Small file: single presigned PUT ─────────────────────────────────
-        const uploadRes = await fetch(upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": file.type || "video/mp4" },
-          body: file,
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", upload_url, true);
+          xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 90));
+          };
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve();
+            else reject(new Error(`S3 upload failed: ${xhr.statusText}`));
+          };
+          xhr.onerror = () => reject(new Error("Network error during upload"));
+          xhr.send(file);
         });
-        if (!uploadRes.ok) throw new Error(`S3 upload failed: ${uploadRes.statusText}`);
         setUploadProgress(90);
 
         await api.POST("/v1/videos/{id}/finalize-upload" as any, {
@@ -143,26 +151,43 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
         if (!partsRes.ok) throw new Error("Failed to get part URLs");
         const { urls } = await partsRes.json() as { urls: Record<string, string> };
 
-        // 3. Upload parts in parallel batches
-        let uploadedParts = 0;
+        // 3. Upload parts in parallel batches with progress tracking
         const completedParts: { part_number: number; etag: string }[] = [];
+        const partProgress = new Array(totalParts).fill(0);
 
-        const uploadPart = async (partNumber: number): Promise<void> => {
-          const start = (partNumber - 1) * PART_SIZE;
-          const end = Math.min(start + PART_SIZE, file.size);
-          const chunk = file.slice(start, end);
-          const presignedUrl = urls[String(partNumber)];
+        const uploadPart = (partNumber: number): Promise<void> => {
+          return new Promise((resolve, reject) => {
+            const start = (partNumber - 1) * PART_SIZE;
+            const end = Math.min(start + PART_SIZE, file.size);
+            const chunk = file.slice(start, end);
+            const presignedUrl = urls[String(partNumber)];
+            const partIndex = partNumber - 1;
 
-          const res = await fetch(presignedUrl, {
-            method: "PUT",
-            body: chunk,
+            const xhr = new XMLHttpRequest();
+            xhr.open("PUT", presignedUrl, true);
+            
+            xhr.upload.onprogress = (e) => {
+              if (e.lengthComputable) {
+                partProgress[partIndex] = e.loaded;
+                const totalLoaded = partProgress.reduce((sum, loaded) => sum + loaded, 0);
+                setUploadProgress(Math.round((totalLoaded / file.size) * 90));
+              }
+            };
+            
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                const etag = xhr.getResponseHeader("ETag") || xhr.getResponseHeader("etag") || "";
+                partProgress[partIndex] = chunk.size; // ensure full size is counted
+                completedParts.push({ part_number: partNumber, etag });
+                resolve();
+              } else {
+                reject(new Error(`Part ${partNumber} upload failed: ${xhr.statusText}`));
+              }
+            };
+            
+            xhr.onerror = () => reject(new Error("Network error during upload"));
+            xhr.send(chunk);
           });
-          if (!res.ok) throw new Error(`Part ${partNumber} upload failed: ${res.statusText}`);
-
-          const etag = res.headers.get("ETag") || res.headers.get("etag") || "";
-          completedParts.push({ part_number: partNumber, etag });
-          uploadedParts++;
-          setUploadProgress(Math.round((uploadedParts / totalParts) * 85));
         };
 
         // Run in batches of MAX_CONCURRENT_PARTS
@@ -171,7 +196,7 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
           await Promise.all(batch.map(uploadPart));
         }
 
-        setUploadProgress(88);
+        setUploadProgress(95);
 
         // 4. Complete multipart upload — sorts parts by number before sending
         completedParts.sort((a, b) => a.part_number - b.part_number);
