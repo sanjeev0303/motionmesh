@@ -42,7 +42,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - QUEUE_URL=nats://nats:4222
       - CAPTIONS_SIDECAR_URL=http://captions-sidecar:8000
-      - PUBLIC_API_URL=http://localhost:8080
+      - PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:8080}
     depends_on:
       redis:
         condition: service_healthy
@@ -97,6 +97,8 @@ services:
         - type=local,src=.buildcache/client
       cache_to:
         - type=local,dest=.buildcache/client,mode=max
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8080}
     container_name: motionmesh-client
     env_file: ./client/dashboard/.env.local
     depends_on:
