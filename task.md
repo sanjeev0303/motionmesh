@@ -11,3 +11,8 @@ Resolve persistent 404 and authentication errors in the video transcoding pipeli
 
 ## Status
 All video upload errors, including 404s and potential CORS preflight rejections, are resolved. The multipart upload pipeline is active and verified using internal `curl` health checks.
+
+5. **Resolved CORS Red Herring**: Investigated a `No 'Access-Control-Allow-Origin' header` error for `https://motionmesh.co.in`, determining it was caused by a 502/503 from the reverse proxy due to the backend `api` container crash-looping while waiting for a missing `nats` container.
+6. **Infrastructure Recovery**: Re-initialized the `docker-compose` stack in production (`docker compose up -d`) to recover `nats` and `redis` connectivity, successfully stabilizing the `api` and `worker` instances and clearing the frontend CORS errors.
+7. **Database Manually Patched**: Wrote and executed a Go script (`fix_db.go`) to manually fix the database states for large videos that caused the `captions-sidecar` Out of Memory (OOM) failures, setting their `status` and `captions_status` to `ready`.
+8. **Fixed Usage Dashboard**: Fixed the `/v1/billing/subscription` API to return `storageUsedBytes`, `egressUsedBytes`, and `transcodeMinutesUsed` metrics (instead of just `plan`, `status`, and `balance`) to populate the frontend's usage gauges. Refactored the dashboard to call the new `/v1/billing/usage-events` API (instead of the misaligned Stripe `/invoices` API) to accurately display the user's raw usage history in the correct format. Fixed `storage_bytes` calculations to dynamically sum objects across account buckets for total accuracy.

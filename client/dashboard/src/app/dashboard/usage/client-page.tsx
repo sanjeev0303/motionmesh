@@ -49,9 +49,9 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
   });
 
   const { data: invoices, isLoading: invLoading, isRefetching: invRefetching } = useQuery({
-    queryKey: ["billing", "invoices"],
+    queryKey: ["billing", "usage-events"],
     queryFn: async () => {
-      const { data, response } = await api.GET("/v1/billing/invoices", {});
+      const { data, response } = await api.GET("/v1/billing/usage-events" as any, {});
       if (!response.ok) return [];
       return (data as unknown as UsageEvent[]) ?? [];
     },

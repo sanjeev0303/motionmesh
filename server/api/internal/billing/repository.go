@@ -13,6 +13,8 @@ type BillingRepository interface {
 	UpdatePlan(ctx context.Context, accountID, plan, status string) error
 	RecordUsageEvent(ctx context.Context, event *models.UsageEvent) error
 	GetAggregatedUsage(ctx context.Context, accountID, eventType string) (int64, error)
+	GetStorageUsedBytes(ctx context.Context, accountID string) (int64, error)
+	ListUsageEvents(ctx context.Context, accountID string, limit int) ([]*models.UsageEvent, error)
 	AddFunds(ctx context.Context, accountID string, amount int64) (int64, error)
 	UpdateStripeCustomerID(ctx context.Context, accountID, customerID string) error
 }

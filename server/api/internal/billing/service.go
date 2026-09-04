@@ -234,6 +234,29 @@ func (s *Service) GetAggregatedUsage(ctx context.Context, accountID, eventType s
 	return used, nil
 }
 
+// GetStorageUsage returns the storage usage for an account by querying the object sizes.
+func (s *Service) GetStorageUsage(ctx context.Context, accountID string) (int64, error) {
+	cacheKey := fmt.Sprintf("usage:%s:storage_bytes", accountID)
+	cached, err := s.rdb.Get(ctx, cacheKey).Int64()
+	if err == nil {
+		return cached, nil
+	}
+
+	used, err := s.repo.GetStorageUsedBytes(ctx, accountID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Cache for 60 seconds
+	s.rdb.Set(ctx, cacheKey, used, 60*time.Second)
+	return used, nil
+}
+
+// ListUsageEvents returns the most recent usage events for an account.
+func (s *Service) ListUsageEvents(ctx context.Context, accountID string, limit int) ([]*models.UsageEvent, error) {
+	return s.repo.ListUsageEvents(ctx, accountID, limit)
+}
+
 // AddFunds adds the specified amount (in cents) to the account's prepaid balance.
 func (s *Service) AddFunds(ctx context.Context, accountID string, amount int64) (int64, error) {
 	if amount <= 0 {

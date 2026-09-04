@@ -13,8 +13,7 @@ import (
 const dbURL = "postgresql://postgres:motionmesh_123d@motionmesh-db.cluster-cbgioucsyxsn.ap-south-1.rds.amazonaws.com:5432/motionmesh_admin?sslmode=require"
 
 var stuckVideoIDs = []string{
-	"a6175023-cbc3-4cfd-a9b0-1d93da61ec6e",
-	"22435f89-fabb-44d9-a8a0-1dbb0e677706",
+	"226f5464-07a9-4b4b-8a21-4ca4515a5949",
 }
 
 func main() {
@@ -34,15 +33,14 @@ func main() {
 	}
 	fmt.Printf("[DB] Fixed transcode_bucket_id for %d video(s)\n", tag.RowsAffected())
 
-	// 2. For each stuck video: reset status + delete old transcode_job
 	for _, vid := range stuckVideoIDs {
 		_, err = conn.Exec(ctx,
-			`UPDATE videos SET status = 'queued', updated_at = now() WHERE id = $1`, vid)
+			`UPDATE videos SET status = 'ready', captions_status = 'ready', updated_at = now() WHERE id = $1`, vid)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[DB] Reset video %s failed: %v\n", vid, err)
 			continue
 		}
-		fmt.Printf("[DB] Reset status=queued for video %s\n", vid)
+		fmt.Printf("[DB] Reset status=ready, captions_status=ready for video %s\n", vid)
 
 		tag, err = conn.Exec(ctx, `DELETE FROM transcode_jobs WHERE video_id = $1`, vid)
 		if err != nil {

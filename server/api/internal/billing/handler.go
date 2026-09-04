@@ -2,6 +2,7 @@ package billing
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -24,7 +25,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	// Protected routes (require auth middleware upstream)
 	r.Get("/invoices", h.listInvoices)
 	r.Get("/subscription", h.getSubscription)
-	r.Get("/usage", h.getUsage)
+	r.Get("/usage-events", h.getUsageEvents)
 	r.Post("/portal", h.createPortalSession)
 	r.Post("/checkout", h.createCheckoutSession)
 	r.Post("/funds", h.addFunds)
@@ -78,30 +79,70 @@ func (h *Handler) getSubscription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// We return the plan and status from the request context (populated by auth middleware).
+	// Fetch usage metrics
+	storageUsedBytes, _ := h.service.GetStorageUsage(r.Context(), account.ID)
+	egressUsedBytes, _ := h.service.GetAggregatedUsage(r.Context(), account.ID, "bandwidth_bytes")
+	transcodeSeconds, _ := h.service.GetAggregatedUsage(r.Context(), account.ID, "video_transcode_seconds")
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"plan":    account.Plan,
-		"status":  account.Status,
-		"balance": account.Balance,
+		"plan":                  account.Plan,
+		"status":                account.Status,
+		"prepaidBalance":        float64(account.Balance) / 100.0, // Convert cents to dollars
+		"storageUsedBytes":      storageUsedBytes,
+		"egressUsedBytes":       egressUsedBytes,
+		"transcodeMinutesUsed":  transcodeSeconds / 60,
+		"transcodeMinutesLimit": 5000,
 	})
 }
 
-func (h *Handler) getUsage(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getUsageEvents(w http.ResponseWriter, r *http.Request) {
 	account, ok := r.Context().Value(auth.AccountContextKey).(*models.Account)
 	if !ok || account == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	storageUsage, _ := h.service.GetAggregatedUsage(r.Context(), account.ID, "storage_gb")
-	bandwidthUsage, _ := h.service.GetAggregatedUsage(r.Context(), account.ID, "bandwidth_gb")
+	events, err := h.service.ListUsageEvents(r.Context(), account.ID, 50)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	type usageResponse struct {
+		ID       string  `json:"id"`
+		Date     string  `json:"date"`
+		Type     string  `json:"type"`
+		Resource string  `json:"resource"`
+		Quantity string  `json:"quantity"`
+		Cost     float64 `json:"cost"`
+	}
+
+	var resp []usageResponse
+	for _, ev := range events {
+		qtyStr := fmt.Sprintf("%d", ev.Quantity)
+		if ev.EventType == "storage_bytes" || ev.EventType == "bandwidth_bytes" {
+			qtyStr = fmt.Sprintf("%.2f GB", float64(ev.Quantity)/(1024*1024*1024))
+		} else if ev.EventType == "video_transcode_seconds" {
+			qtyStr = fmt.Sprintf("%d min", ev.Quantity/60)
+		}
+
+		resp = append(resp, usageResponse{
+			ID:       ev.ID,
+			Date:     ev.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			Type:     ev.EventType,
+			Resource: "System",
+			Quantity: qtyStr,
+			Cost:     0, // Need to implement pricing logic if cost > 0
+		})
+	}
+
+	if resp == nil {
+		resp = []usageResponse{}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"storage_gb":   storageUsage,
-		"bandwidth_gb": bandwidthUsage,
-	})
+	json.NewEncoder(w).Encode(resp)
 }
 
 func (h *Handler) createPortalSession(w http.ResponseWriter, r *http.Request) {

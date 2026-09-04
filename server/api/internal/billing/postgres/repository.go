@@ -72,6 +72,40 @@ func (r *Repository) GetAggregatedUsage(ctx context.Context, accountID, eventTyp
 	return total, err
 }
 
+func (r *Repository) GetStorageUsedBytes(ctx context.Context, accountID string) (int64, error) {
+	var total int64
+	err := r.db.QueryRow(ctx,
+		`SELECT COALESCE(SUM(o.size_bytes), 0)
+		 FROM objects o
+		 JOIN buckets b ON o.bucket_id = b.id
+		 WHERE b.account_id = $1`,
+		accountID,
+	).Scan(&total)
+	return total, err
+}
+
+func (r *Repository) ListUsageEvents(ctx context.Context, accountID string, limit int) ([]*models.UsageEvent, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT id, account_id, event_type, quantity, metadata, created_at
+		 FROM usage_events WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2`,
+		accountID, limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*models.UsageEvent
+	for rows.Next() {
+		ev := &models.UsageEvent{}
+		if err := rows.Scan(&ev.ID, &ev.AccountID, &ev.EventType, &ev.Quantity, &ev.Metadata, &ev.CreatedAt); err != nil {
+			return nil, err
+		}
+		events = append(events, ev)
+	}
+	return events, rows.Err()
+}
+
 func (r *Repository) AddFunds(ctx context.Context, accountID string, amount int64) (int64, error) {
 	var newBalance int64
 	err := r.db.QueryRow(ctx,

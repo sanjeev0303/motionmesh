@@ -16,7 +16,7 @@ export default async function UsagePage() {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store'
       }),
-      fetch(`${apiUrl}/v1/billing/invoices`, {
+      fetch(`${apiUrl}/v1/billing/usage-events`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store'
       })

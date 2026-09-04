@@ -41,6 +41,17 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
     }
   }, [getToken]);
 
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isUploading) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isUploading]);
+
   // Builds absolute API URL for raw fetch multipart calls
   const apiUrl = (path: string) => `${API_BASE}${path}`;
 
