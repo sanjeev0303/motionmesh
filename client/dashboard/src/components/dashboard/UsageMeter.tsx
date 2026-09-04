@@ -13,7 +13,7 @@ export function UsageMeter({ label, used, limit, formatAs = "bytes" }: UsageMete
   
   const formatValue = (val: number) => {
     if (formatAs === "bytes") return formatBytes(val, 0);
-    return `${val.toLocaleString()} min`;
+    return `${val.toFixed(1)} min`;
   };
 
   const isWarning = percentage >= 80 && percentage < 95;
