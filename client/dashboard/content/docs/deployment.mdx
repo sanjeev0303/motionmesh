@@ -1,25 +1,129 @@
 ---
 title: Deployment
-description: Deploying MotionMesh to production
+description: Deploying MotionMesh to production — Docker Compose, AWS EC2, environment configuration, and scaling.
 ---
 
 # Deployment
 
-Learn how to deploy MotionMesh services to production environments.
+MotionMesh is a modular monolith distributed as Docker containers: a Go API server, a Go worker fleet, a Python captions sidecar, and the Next.js dashboard. The production reference topology runs on AWS EC2 (ap-south-1) with managed data stores.
 
-## Docker Swarm / Kubernetes
+## Architecture overview
 
-MotionMesh is designed as a modular monolith, making it easy to deploy using container orchestration tools like Docker Swarm or Kubernetes.
+```
+Load Balancer (ALB / Traefik / NGINX)
+        │
+        ├── api (Go, stateless) ────────────► Postgres (Aurora/RDS or Neon)
+        │          │                         ► Redis (ElastiCache)
+        │          └── enqueue jobs ────────► NATS JetStream
+        │                                           │
+        │                                           ▼
+        │                                    worker fleet (Go + FFmpeg)
+        │                                           ├── captions sidecar (Python + Whisper)
+        │                                           └── S3 object storage
+        │
+        └── dashboard (Next.js) ──► Clerk (auth) ──► Stripe (billing)
+```
 
-1. Build the Docker images using the provided `Dockerfile`.
-2. Push the images to your container registry.
-3. Use the sample Kubernetes manifests in the `/infra/k8s` directory to deploy the services.
+## Local development
 
-## Managed Services
+```bash
+# 1. Start infrastructure (Postgres, Redis, NATS, MinIO)
+docker compose up -d
 
-For production deployments, we recommend using managed services for core infrastructure components:
+# 2. Configure the server
+cp server/.env.example server/.env
 
-- **Database**: Amazon RDS for PostgreSQL or Neon.
-- **Object Storage**: Amazon S3 or Cloudflare R2.
-- **Message Broker**: NATS Cloud or self-hosted JetStream cluster.
-- **Cache**: Amazon ElastiCache for Redis.
+# 3. Configure the dashboard
+cd client/dashboard
+cp .env.example .env   # set NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# 4. Run the API (Go 1.22+)
+cd server/api && go run ./cmd/api
+
+# 5. Run the dashboard
+cd client/dashboard && npm install && npm run dev
+```
+
+## Docker Compose (single node)
+
+The production `docker-compose.yml` at the repo root runs the full stack:
+
+```yaml
+# services: postgres, redis, nats, api, worker, captions-sidecar, dashboard
+```
+
+```bash
+docker compose up -d --build
+```
+
+Key production settings:
+
+- `CORS_ALLOWED_ORIGINS` — comma-separated list of your dashboard origin(s), e.g. `https://motionmesh.co.in,https://dashboard.motionmesh.co.in`. Missing origins cause browser CORS preflight failures — this is the most common production misconfiguration.
+- The API container binds port `8080`; expose it through your reverse proxy/load balancer.
+
+## Environment variables
+
+### Server (`server/.env`)
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | Postgres connection string (Aurora/RDS/Neon) |
+| `REDIS_URL` | Redis connection string (ElastiCache) |
+| `QUEUE_URL` | NATS JetStream connection string |
+| `STORAGE_BUCKET` | Primary S3 bucket name |
+| `STORAGE_REGION` | S3 region (default `ap-south-1`) |
+| `JWT_SECRET` | JWT signing secret (`openssl rand -hex 64`) |
+| `CLERK_SECRET_KEY` | Clerk dashboard auth secret |
+| `CLERK_JWKS_URL` | Clerk JWKS endpoint (networkless JWT verification) |
+| `STRIPE_SECRET_KEY` | Stripe API key |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `CAPTIONS_SIDECAR_URL` | Captions service URL (`http://localhost:8000` locally) |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated allowed origins |
+
+> **S3 credentials:** locally, set `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (or `~/.aws/credentials`). In production the EC2 IAM instance profile is used automatically — no keys required.
+
+### Dashboard (`client/dashboard/.env`)
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | Public API base URL, e.g. `https://api.motionmesh.co.in` |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `CLERK_SECRET_KEY` | Clerk secret key |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `SIGN_UP_URL` | Auth routes (default `/login`, `/signup`) |
+| `MOTIONMESH_API_KEY` | Server-side key for dashboard API calls |
+
+## AWS production reference (ap-south-1)
+
+The `infra/` directory contains Terraform for provisioning:
+
+- **Compute:** EC2 instances running Docker — API, worker, and dashboard (IMM IAM profile grants S3 access).
+- **Database:** Aurora/RDS PostgreSQL (or Neon) — `DATABASE_URL` with `sslmode=require`.
+- **Cache:** ElastiCache Redis.
+- **Queue:** Self-hosted NATS JetStream cluster (or NATS Cloud).
+- **Storage:** S3 buckets; the HLS proxy streams directly from storage with Signed URLs.
+- **Billing:** Stripe metered billing via `STRIPE_WEBHOOK_SECRET`.
+
+Deploy updates to existing instances:
+
+```bash
+# Example: reconfigure containers on a host (via SSM / SSH)
+docker compose up -d --force-recreate
+```
+
+## Kubernetes
+
+Sample manifests live in `infra/k8s`. MotionMesh services are stateless (except the worker's job claim), so horizontal scaling is safe:
+
+- `api` — scale replicas behind a service.
+- `worker` — scale to your transcode throughput; each worker drains jobs from NATS JetStream.
+- `captions-sidecar` — scale with the worker; heavy on memory (Whisper models).
+- `dashboard` — scale replicas; build-time rendered.
+
+## Production checklist
+
+- [ ] `CORS_ALLOWED_ORIGINS` includes every real origin
+- [ ] `JWT_SECRET` is a fresh 64-byte random value
+- [ ] S3 bucket policy allows the worker's IAM role
+- [ ] Stripe webhook endpoint points at `https://api.yourdomain.com/v1/billing/webhook` with the correct signing secret
+- [ ] Captions sidecar is reachable from workers (`CAPTIONS_SIDECAR_URL`)
+- [ ] Health check: `GET /health` returns `{"status":"ok"}`

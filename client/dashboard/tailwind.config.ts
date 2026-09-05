@@ -97,7 +97,15 @@ const config = {
           "100%": {
             transform: "translateX(100%)",
           },
-        }
+        },
+        "fade-out": {
+          from: { opacity: "1" },
+          to: { opacity: "0" },
+        },
+        progress: {
+          from: { width: "0%" },
+          to: { width: "100%" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",

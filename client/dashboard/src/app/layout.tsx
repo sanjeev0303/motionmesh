@@ -25,6 +25,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://motionmesh.co.in"),
   title: "MotionMesh Dashboard",
   description: "Manage your video transcoding and streaming",
   icons: {

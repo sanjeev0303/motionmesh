@@ -195,6 +195,9 @@ export function PricingSection() {
 
         {/* Header */}
         <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-borderSubtle bg-surface/60 text-xs font-mono text-accent-mesh mb-6">
+            $29/mo Pro · pay-as-you-go available
+          </div>
           <h2 className="text-3xl md:text-4xl font-display font-semibold mb-4">
             Simple, transparent pricing.
           </h2>

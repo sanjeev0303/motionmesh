@@ -21,8 +21,8 @@ The SDK's `uploadVideo` and `videos.listByUser` methods POST to `/api/motionmesh
 
 | Prefix | Scope |
 |--------|-------|
-| `mm_live_…` | Full access — upload, delete, admin |
-| `mm_test_…` | Sandbox only — no real charges or storage |
+| `mot_live_…` | Full access — upload, delete, admin |
+| `mot_test_…` | Sandbox only — no real charges or storage |
 
 Create and revoke keys in [Dashboard → Settings → API Keys](/dashboard/keys).
 
@@ -36,8 +36,8 @@ export { POST } from "@motionmesh/sdk/proxy/nextjs";
 ```
 
 ```env
-MOTIONMESH_API_KEY=mm_live_xxxxxxxxxxxxxxxx
-MOTIONMESH_API_URL=https://api.motionmesh.io
+MOTIONMESH_API_KEY=mot_live_xxxxxxxxxxxxxxxx
+MOTIONMESH_API_URL=https://api.motionmesh.co.in
 ```
 
 ### Express
@@ -84,15 +84,15 @@ Retrieve only that user's videos:
 const videos = await motionmesh.videos.listByUser({ externalUserId: userId });
 ```
 
-## Server-side direct usage (Python / Node.js)
+## Server-side direct usage (Node.js)
 
 When calling from a trusted server environment:
 
-```python
-from motionmesh import MotionMeshClient
+```ts
+import { MotionmeshClient } from "@motionmesh/sdk";
 
-client = MotionMeshClient(api_key="mm_live_xxxxxxxxxxxxxxxx")
-videos = client.list_videos()
+const client = new MotionmeshClient({ apiKey: "mot_live_xxxxxxxxxxxxxxxx" });
+const videos = await client.listVideos();
 ```
 
-> **Never** use `MotionMeshClient` directly in browser-side code. Use the proxy pattern instead.
+> **Never** use `MotionmeshClient` directly in browser-side code. Use the proxy pattern instead.

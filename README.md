@@ -14,10 +14,10 @@
   <p>Upload, store, transcode, stream, and deliver video at scale. Build video platforms without the complexity.</p>
 
   <p>
-    <a href="https://motionmesh.com/docs">Documentation</a> •
-    <a href="https://motionmesh.com">Website</a> •
-    <a href="https://app.motionmesh.com">Dashboard</a> •
-    <a href="https://motionmesh.com/docs/sdk">SDK</a> •
+    <a href="https://motionmesh.co.in/docs">Documentation</a> •
+    <a href="https://motionmesh.co.in">Website</a> •
+    <a href="https://dashboard.motionmesh.co.in">Dashboard</a> •
+    <a href="https://motionmesh.co.in/docs/sdk">SDK</a> •
     <a href="https://discord.gg/motionmesh">Discord</a> •
     <a href="https://github.com/sanjeev0303/motionmesh/discussions">Discussions</a> •
     <a href="https://www.npmjs.com/package/@motionmesh/sdk">@motionmesh/sdk</a> •
@@ -299,11 +299,13 @@ motionmesh/
 │   ├── worker/      # Transcoding and FFmpeg task runner (Go)
 │   ├── shared/      # Shared types and utilities (Go)
 │   └── captions/    # Python sidecar for AI transcription & chapters
-├── client/          # Next.js administrative dashboard
+├── client/          # Next.js applications
+│   └── dashboard/   # Administrative dashboard + landing page + docs
+│       ├── src/     # Dashboard & landing page (Next.js App Router)
+│       └── content/docs/  # Fumadocs documentation site
 ├── sdk/             # Client libraries
 │   ├── js/          # @motionmesh/sdk and @motionmesh/player
 │   └── python/      # motionmesh (PyPI)
-├── docs/            # Fumadocs documentation site
 └── infra/           # Terraform and Kubernetes manifests
 ```
 
@@ -330,7 +332,7 @@ Get up and running locally in under 5 minutes.
    ```
 5. **Run the Dashboard:**
    ```bash
-   cd client && npm install && npm run dev
+   cd client/dashboard && npm install && npm run dev
    ```
 
 ---
@@ -395,14 +397,15 @@ Our production topology is designed for resilience:
 
 Dive deeper into the platform:
 
-- [Getting Started](https://motionmesh.com/docs)
-- [SDK Reference](https://motionmesh.com/docs/sdk)
-- [REST API](https://motionmesh.com/docs/api)
-- [Authentication](https://motionmesh.com/docs/auth)
-- [Deployment](https://motionmesh.com/docs/deployment)
-- [Workers](https://motionmesh.com/docs/workers)
-- [Dashboard](https://motionmesh.com/docs/dashboard)
-- [Player](https://motionmesh.com/docs/player)
+- [Getting Started](https://motionmesh.co.in/docs/getting-started)
+- [JavaScript SDK](https://motionmesh.co.in/docs/javascript)
+- [Python SDK](https://motionmesh.co.in/docs/python)
+- [API Reference](https://motionmesh.co.in/docs/api-reference)
+- [Authentication](https://motionmesh.co.in/docs/authentication)
+- [Deployment](https://motionmesh.co.in/docs/deployment)
+- [Guides](https://motionmesh.co.in/docs/guides/proxy-nextjs)
+- [Player](https://motionmesh.co.in/docs/player)
+- [Changelog](https://motionmesh.co.in/docs/changelog)
 
 ---
 
@@ -427,8 +430,10 @@ Dive deeper into the platform:
 - [x] Node.js / TypeScript SDK
 - [x] React Player (@motionmesh/player)
 - [x] Next.js Dashboard
-- [ ] Python SDK
-- [ ] AI Search & Transcripts
+- [x] Python SDK
+- [x] AI Captions, Transcripts & Chapters
+- [x] Quota Engine & Tiered Pricing (Free / Pay-as-you-go / Pro / Scale)
+- [ ] AI Search
 - [ ] Webhooks & Events
 - [ ] Live Streaming Support
 - [ ] DRM (Digital Rights Management)
@@ -449,7 +454,7 @@ Join the Motionmesh community:
 - **GitHub Discussions:** [Ask questions and share ideas](https://github.com/sanjeev0303/motionmesh/discussions)
 - **Issues:** [Report bugs](https://github.com/sanjeev0303/motionmesh/issues)
 - **Discord:** [Join the chat](https://discord.gg/motionmesh)
-- **Email:** support@motionmesh.com
+- **Email:** support@motionmesh.co.in
 
 ---
 
@@ -457,7 +462,7 @@ Join the Motionmesh community:
 
 Security is a first-class citizen. We enforce strict Server-to-Server Proxy Patterns, utilize Signed URLs for all media access, and ensure secrets are never leaked to the client.
 
-For responsible disclosure, please email `security@motionmesh.com` directly. Do not open public issues for security vulnerabilities.
+For responsible disclosure, please email `security@motionmesh.co.in` directly. Do not open public issues for security vulnerabilities.
 
 ---
 

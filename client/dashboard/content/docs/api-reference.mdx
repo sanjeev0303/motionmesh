@@ -5,12 +5,26 @@ description: Complete REST API reference — endpoints, authentication, request/
 
 # API Reference
 
-Base URL: `https://api.motionmesh.io/v1`
+Base URL: `https://api.motionmesh.co.in/v1`
 
 All requests require a bearer token:
 
 ```http
-Authorization: Bearer mm_live_xxxxxxxxxxxxxxxx
+Authorization: Bearer mot_live_xxxxxxxxxxxxxxxx
+```
+
+> The API accepts both API keys (`mot_live_…` / `mot_test_…`) and Clerk JWTs. Public endpoints that do **not** require authentication are marked below.
+
+---
+
+## Health
+
+### `GET /health`
+
+Public endpoint — no auth required.
+
+```json
+{ "status": "ok" }
 ```
 
 ---
@@ -64,6 +78,8 @@ Initiate a video upload.
 }
 ```
 
+> Quota limits (storage, video count, file size) are enforced on this endpoint for Free-tier accounts. Exceeding a limit returns `402` with an error code such as `storage_limit_reached` or `video_count_limit_reached`.
+
 ### `GET /videos/{id}`
 
 Get a single video. **Response `200`** — same shape as the list item.
@@ -72,64 +88,130 @@ Get a single video. **Response `200`** — same shape as the list item.
 
 Permanently delete a video and all assets. **Response `204`**
 
+### `POST /videos/{id}/upload`
 
+Proxy upload of raw bytes — the API streams the body directly into object storage. Used by the SDK's simulated direct-to-storage flows.
+
+### `POST /videos/{id}/finalize-upload`
+
+Mark an upload as complete and enqueue the transcode job.
+
+### `GET /videos/{id}/thumbnail`
+
+Serve the generated thumbnail image.
+
+### `GET /videos/{id}/playback`
+
+Get playback info (HLS playlist URL and related asset URLs).
+
+### `POST /videos/{id}/transcode`
+
+Manually trigger an FFmpeg transcode job for an existing video.
+
+### `GET /videos/{id}/hls/*`
+
+HLS stream proxy — serves `.m3u8` playlists and `.ts`/`.m4s` segments directly from storage. **Public — no auth required** (playback is protected by signed URLs where enabled).
+
+### Multipart uploads
+
+For large files, the SDK uses server-presigned multipart uploads:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /videos/{id}/multipart-create` | Initiate a multipart upload, returns upload ID |
+| `POST /videos/{id}/multipart-parts` | Presign part upload URLs |
+| `POST /videos/{id}/multipart-complete` | Complete the multipart upload and enqueue transcoding |
+| `POST /videos/{id}/multipart-abort` | Abort and discard all uploaded parts |
+
+---
+
+## Jobs
+
+### `GET /jobs`
+
+List transcode jobs for the account (used by the Media Converter dashboard).
+
+**Query parameters**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | `integer` | Max results |
+
+**Response `200`**
+
+```json
+[
+  {
+    "id": "job_abc123",
+    "video_id": "vid_abc123",
+    "status": "processing",
+    "progress": 0.42,
+    "created_at": "2026-07-29T08:00:00Z"
+  }
+]
+```
+
+---
 
 ## API Keys
 
 ### `GET /api-keys`
 
 ```json
-[{ "prefix": "mm_live_abcd", "created_at": "2026-07-18T00:00:00Z" }]
+[{ "prefix": "mot_live_abcd", "created_at": "2026-07-18T00:00:00Z" }]
 ```
 
 ### `POST /api-keys`
 
-Creates a new key. Full key returned **only once**:
+Creates a new key. The full key is returned **only once**:
 
 ```json
-{ "prefix": "mm_live_efgh", "key": "mm_live_efghxxxxxxxxxxxxxxxx" }
+{ "prefix": "mot_live_efgh", "key": "mot_live_efghxxxxxxxxxxxxxxxx" }
 ```
 
-### `DELETE /api-keys/{prefix}`
+### `DELETE /api-keys/{id}`
 
-**Response `204`**
+Revoke a key. **Response `204`**
 
 ---
 
-## Analytics
+## Buckets
 
-### `POST /analytics/collect`
+### `GET /buckets`
 
-Public endpoint — no auth required.
+List storage buckets for the account.
 
-```json
-{
-  "video_id": "vid_abc123",
-  "event_type": "play",
-  "timestamp": "2026-07-29T08:10:00Z"
-}
-```
+### `POST /buckets`
 
-Event types: `play` | `pause` | `end` | `seek` | `error`
+Create a new bucket. Bucket creation is quota-limited on Free tier (`buckets_limit_reached`).
 
-### `GET /analytics/stats`
+### `GET /buckets/{id}/objects`
 
-```json
-{
-  "total_plays": 1240,
-  "unique_viewers": 380,
-  "avg_watch_time_seconds": 94
-}
-```
+List objects stored in a bucket.
+
+### `DELETE /buckets/{id}`
+
+Delete an empty bucket. **Response `204`**
 
 ---
 
 ## Billing
 
+### `POST /billing/webhook`
+
+Stripe webhook receiver. **Public — no auth required** (verified via the `Stripe-Signature` header).
+
 ### `GET /billing/subscription`
 
 ```json
-{ "plan": "pro", "status": "active", "current_period_end": "2026-08-29T00:00:00Z" }
+{
+  "plan": "pro",
+  "status": "active",
+  "current_period_end": "2026-08-29T00:00:00Z",
+  "storageUsedBytes": 204800000,
+  "egressUsedBytes": 1073741824,
+  "transcodeMinutesUsed": 42.5
+}
 ```
 
 ### `GET /billing/invoices`
@@ -137,6 +219,22 @@ Event types: `play` | `pause` | `end` | `seek` | `error`
 ```json
 [{ "amount": 2900, "currency": "usd", "status": "paid" }]
 ```
+
+### `GET /billing/usage-events`
+
+Raw metered usage events (storage bytes, egress bandwidth, transcode seconds) used to render the dashboard usage history and meters.
+
+### `POST /billing/portal`
+
+Create a Stripe billing portal session for self-serve plan management.
+
+### `POST /billing/checkout`
+
+Create a Stripe checkout session (plan upgrades, Pro subscription).
+
+### `POST /billing/funds`
+
+Add prepaid funds to a pay-as-you-go balance.
 
 ---
 
@@ -150,7 +248,19 @@ Event types: `play` | `pause` | `end` | `seek` | `error`
 |--------|---------|
 | `400` | Bad request |
 | `401` | Missing or invalid API key |
+| `402` | Quota exhausted (Free tier) — see error codes below |
 | `403` | Insufficient plan tier |
 | `404` | Not found |
 | `429` | Rate limit exceeded |
 | `500` | Internal server error |
+
+### Quota error codes (`402`)
+
+| Code | Meaning |
+|------|---------|
+| `storage_limit_reached` | Account storage bytes exceed the plan limit |
+| `transcode_limit_reached` | Monthly transcode minutes exhausted |
+| `duration_limit_exceeded` | Video longer than the plan's max duration |
+| `video_count_limit_reached` | Too many videos for the plan |
+| `buckets_limit_reached` | Too many buckets for the plan |
+| `api_keys_limit_reached` | Too many API keys for the plan |

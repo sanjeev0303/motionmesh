@@ -10,7 +10,7 @@ Get your first video uploaded and streaming in under 5 minutes.
 ## Prerequisites
 
 - A MotionMesh account with an API key (create one in [Settings → API Keys](/dashboard/keys))
-- Node.js ≥ 18 **or** Python ≥ 3.10
+- Node.js ≥ 18
 
 ## JavaScript / TypeScript
 
@@ -34,8 +34,8 @@ export { POST } from "@motionmesh/sdk/proxy/nextjs";
 Set the environment variables:
 
 ```bash
-MOTIONMESH_API_KEY=mm_live_xxxxxxxxxxxxxxxx
-MOTIONMESH_API_URL=https://api.motionmesh.io
+MOTIONMESH_API_KEY=mot_live_xxxxxxxxxxxxxxxx
+MOTIONMESH_API_URL=https://api.motionmesh.co.in
 ```
 
 ### 3. Upload a video from the browser
@@ -73,42 +73,8 @@ const videos = await motionmesh.videos.listByUser({
 
 ---
 
-## Python
-
-### 1. Install
-
-```bash
-pip install motionmesh
-```
-
-### 2. Initialize the client
-
-```python
-from motionmesh import MotionMeshClient
-
-client = MotionMeshClient(api_key="mm_live_xxxxxxxxxxxxxxxx")
-```
-
-### 3. Upload a video
-
-```python
-video = client.create_video(filename="intro.mp4", size_bytes=1048576)
-print(video["id"])
-```
-
-### 4. List videos
-
-```python
-videos = client.list_videos()
-for v in videos:
-    print(v["id"], v["status"])
-```
-
----
-
 ## Next steps
 
 - [Authentication →](/docs/authentication)
 - [JavaScript SDK →](/docs/javascript)
-- [Python SDK →](/docs/python)
 - [Player →](/docs/player)

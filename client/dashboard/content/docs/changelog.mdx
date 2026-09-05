@@ -5,6 +5,28 @@ description: Recent releases, new features, and breaking changes.
 
 # Changelog
 
+## v0.5.0 — 2026-08
+
+### Added
+- **Cost-based tiered pricing** — Free / Pay-as-you-go (Starter) / Pro ($29) / Scale tiers built from real AWS rates (ap-south-1) with server-enforced quota engine (`PlanQuota`, `CheckQuota`, `RequirePlan`, `EnforceQuota` middleware).
+- **Quota enforcement on Free tier** — upload initiation, bucket creation, and API key creation now return `402` with machine-readable codes: `storage_limit_reached`, `transcode_limit_reached`, `duration_limit_exceeded`, `video_count_limit_reached`, `buckets_limit_reached`, `api_keys_limit_reached`.
+- **`GET /v1/billing/usage-events`** — raw metered usage history for the dashboard usage page.
+- **Usage metrics on subscription** — `/v1/billing/subscription` now returns `storageUsedBytes`, `egressUsedBytes`, and `transcodeMinutesUsed`.
+- **Interactive pricing estimator** — landing page Pay-as-you-go cost calculator using real overage rates.
+- **Dashboard charts** — 14-day upload area chart, video status progress bars, storage donut, and per-bucket bar chart powered by Recharts.
+- **Usage page redesign** — cost-by-resource charts and animated quota meters that turn red when limits are exhausted.
+- **Billing page redesign** — premium stat cards and unified invoice history table.
+- **API Keys page redesign** — scope segmented control, gradient modal header, and empty state.
+
+### Changed
+- Transcode minutes now computed with float precision (`45s` → `0.75 min` instead of `0`).
+- Landing page pricing section rebuilt around transparent AWS cost breakdowns (storage, egress, MediaConvert + 50% margin).
+
+### Breaking
+- **Player branding removed** — watermark/branding packages, routes, OpenAPI schema, and dashboard pages were deleted. Existing integrations using branding endpoints will now receive `404`.
+
+---
+
 ## v0.4.0 — 2026-07-29
 
 ### Added
