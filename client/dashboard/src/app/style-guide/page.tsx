@@ -22,16 +22,16 @@ export default function StyleGuide() {
           <ColorSwatch name="bg-surface" color="bg-surface" text="text-text-primary" />
           <ColorSwatch name="bg-surface-raised" color="bg-surface-raised" text="text-text-primary" />
           
-          <ColorSwatch name="accent-motion" color="bg-accent-motion" text="text-base" />
-          <ColorSwatch name="accent-mesh" color="bg-accent-mesh" text="text-base" />
+          <ColorSwatch name="accent-motion" color="bg-accent-motion" text="text-primary-foreground" />
+          <ColorSwatch name="accent-mesh" color="bg-accent-mesh" text="text-primary-foreground" />
           
-          <ColorSwatch name="text-text-primary" color="bg-primary" text="text-base" />
-          <ColorSwatch name="text-text-muted" color="bg-muted-foreground" text="text-base" />
+          <ColorSwatch name="text-text-primary" color="bg-primary" text="text-primary-foreground" />
+          <ColorSwatch name="text-text-muted" color="bg-muted-foreground" text="text-primary-foreground" />
           <ColorSwatch name="border-subtle" color="bg-border" text="text-text-primary" />
           
-          <ColorSwatch name="success" color="bg-success" text="text-base" />
-          <ColorSwatch name="warning" color="bg-warning" text="text-base" />
-          <ColorSwatch name="danger" color="bg-danger" text="text-base" />
+          <ColorSwatch name="success" color="bg-success" text="text-primary-foreground" />
+          <ColorSwatch name="warning" color="bg-warning" text="text-primary-foreground" />
+          <ColorSwatch name="danger" color="bg-danger" text="text-primary-foreground" />
         </div>
       </section>
 

@@ -20,7 +20,6 @@ export const metadata: Metadata = {
 };
 
 const HERO_STATS = [
-  { value: "5 min", label: "Zero to streaming" },
   { value: "1080p–240p", label: "Automatic ABR ladder" },
   { value: "90+", label: "Caption languages (Whisper)" },
   { value: "MIT", label: "Fully open source" },
@@ -83,7 +82,7 @@ export default function Home() {
             <MeshAnimation />
 
             {/* Stats row */}
-            <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden rounded-xl border border-borderSubtle bg-borderSubtle w-full max-w-3xl">
+            <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-px overflow-hidden rounded-xl border border-borderSubtle bg-borderSubtle w-full max-w-3xl">
               {HERO_STATS.map((stat) => (
                 <div key={stat.label} className="bg-surface/80 backdrop-blur px-6 py-5">
                   <div className="font-display text-2xl md:text-3xl font-bold text-text-primary mb-1">

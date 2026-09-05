@@ -14,6 +14,13 @@ const config = {
 	],
   prefix: "",
   theme: {
+    // `base` must not be a text color: it collides with the font-size scale
+    // (`.text-base` → `font-size`), which would force `color: var(--bg-base)`.
+    textColor: ({ theme }) => {
+      const colors = theme('colors')
+      const { base: _base, ...rest } = colors
+      return rest
+    },
     container: {
       center: true,
       padding: "2rem",
