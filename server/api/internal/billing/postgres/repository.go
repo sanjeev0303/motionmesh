@@ -64,11 +64,15 @@ func (r *Repository) RecordUsageEvent(ctx context.Context, event *models.UsageEv
 
 func (r *Repository) GetAggregatedUsage(ctx context.Context, accountID, eventType string) (int64, error) {
 	var total int64
-	err := r.db.QueryRow(ctx,
-		`SELECT COALESCE(SUM(quantity), 0) FROM usage_events
-		 WHERE account_id = $1 AND event_type = $2`,
-		accountID, eventType,
-	).Scan(&total)
+	// Metered resources (transcode seconds, bandwidth) roll at the calendar
+	// month; storage_bytes events describe a persistent state, not a monthly flow.
+	q := `SELECT COALESCE(SUM(quantity), 0) FROM usage_events
+	      WHERE account_id = $1 AND event_type = $2`
+	args := []interface{}{accountID, eventType}
+	if eventType != "storage_bytes" {
+		q += ` AND created_at >= date_trunc('month', now())`
+	}
+	err := r.db.QueryRow(ctx, q, args...).Scan(&total)
 	return total, err
 }
 
