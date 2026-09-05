@@ -56,6 +56,20 @@ const COST_COLORS: Record<string, string> = {
   storage: "#8B5CF6", egress: "#F59E0B", transcode: "#EC4899", default: "#00F0FF",
 };
 
+// Static classes so Tailwind JIT picks them up (template-literal classes never compile)
+const QUOTA_COLORS: Record<string, { chip: string; icon: string; bar: string }> = {
+  "violet-500": { chip: "bg-violet-500/10", icon: "text-violet-500", bar: "bg-violet-500" },
+  "warning": { chip: "bg-warning/10", icon: "text-warning", bar: "bg-warning" },
+  "pink-500": { chip: "bg-pink-500/10", icon: "text-pink-500", bar: "bg-pink-500" },
+};
+
+const SUMMARY_COLORS: Record<string, string> = {
+  "accent-motion": "bg-accent-motion/10 text-accent-motion",
+  "warning": "bg-warning/10 text-warning",
+  "danger": "bg-danger/10 text-danger",
+  "success": "bg-success/10 text-success",
+};
+
 function QuotaMeter({
   label, used, limitVal, icon: Icon, color, formatFn, unit, isUnlimited, isExceeded,
 }: {
@@ -70,7 +84,7 @@ function QuotaMeter({
     <div className={`p-6 rounded-xl border transition-all duration-300 relative overflow-hidden group ${
       isDanger ? "border-danger/50 bg-danger/5 shadow-sm shadow-danger/10" :
       isWarning ? "border-warning/40 bg-warning/5" :
-      "border-border-subtle bg-bg-surface hover:border-border-default"
+      "border-borderSubtle bg-surface hover:border-text-muted/40"
     }`}>
       <div className="absolute -top-8 -right-8 opacity-[0.04] group-hover:opacity-[0.08] transition-opacity pointer-events-none">
         <Icon className={`w-40 h-40`} />
@@ -78,8 +92,8 @@ function QuotaMeter({
 
       <div className="flex items-center justify-between mb-4 relative z-10">
         <div className="flex items-center gap-2.5">
-          <div className={`p-2 rounded-lg bg-${color}/10`}>
-            <Icon className={`w-5 h-5 text-${color}`} />
+          <div className={`p-2 rounded-lg ${QUOTA_COLORS[color]?.chip ?? "bg-surface-raised/50"}`}>
+            <Icon className={`w-5 h-5 ${QUOTA_COLORS[color]?.icon ?? "text-text-muted"}`} />
           </div>
           <div>
             <p className="text-sm font-medium text-text-primary">{label}</p>
@@ -111,10 +125,10 @@ function QuotaMeter({
 
         {!isUnlimited && (
           <>
-            <div className="h-2 rounded-full bg-bg-surface-raised overflow-hidden">
+            <div className="h-2 rounded-full bg-surface-raised overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-700 ${
-                  isDanger ? "bg-danger" : isWarning ? "bg-warning" : `bg-${color}`
+                  isDanger ? "bg-danger" : isWarning ? "bg-warning" : QUOTA_COLORS[color]?.bar ?? "bg-accent-motion"
                 }`}
                 style={{ width: `${pct}%` }}
               />
@@ -139,7 +153,7 @@ function QuotaMeter({
 const CustomBarTooltip = ({ active, payload, label }: any) => {
   if (active && payload?.length) {
     return (
-      <div className="bg-bg-surface border border-border-subtle p-3 rounded-lg shadow-xl text-xs">
+      <div className="bg-surface border border-borderSubtle p-3 rounded-lg shadow-xl text-xs">
         <p className="font-semibold capitalize mb-1">{label}</p>
         <p className="font-mono text-text-primary">${payload[0].value.toFixed(4)}</p>
       </div>
@@ -151,7 +165,7 @@ const CustomBarTooltip = ({ active, payload, label }: any) => {
 const CustomAreaTooltip = ({ active, payload, label }: any) => {
   if (active && payload?.length) {
     return (
-      <div className="bg-bg-surface border border-border-subtle p-3 rounded-lg shadow-xl text-xs">
+      <div className="bg-surface border border-borderSubtle p-3 rounded-lg shadow-xl text-xs">
         <p className="font-semibold mb-1">{label}</p>
         {payload.map((p: any) => (
           <div key={p.name} className="flex items-center gap-2">
@@ -256,7 +270,7 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
 
   if (showSkeleton) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-text-muted gap-4 border border-border-subtle border-dashed rounded-xl bg-bg-surface">
+      <div className="flex flex-col items-center justify-center py-24 text-text-muted gap-4 border border-borderSubtle border-dashed rounded-xl bg-surface">
         <Loader2 className="w-8 h-8 animate-spin text-accent-motion" />
         <p className="text-sm font-medium">Loading usage data…</p>
       </div>
@@ -266,7 +280,7 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
   return (
     <div className="space-y-8 pb-8">
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border-subtle pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-borderSubtle pb-6">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-display font-bold text-text-primary tracking-tight">Usage &amp; Billing</h1>
@@ -295,10 +309,10 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
           { title: "This Month Cost",  value: `$${currentMonthCost.toFixed(4)}`, icon: DollarSign, color: "warning", sub: "Accrued this billing cycle" },
           { title: "Est. Overage",     value: `$${estimatedOverage.toFixed(4)}`, icon: Receipt, color: estimatedOverage > 0 ? "danger" : "success", sub: estimatedOverage > 0 ? "Beyond included limits" : "Within plan limits" },
         ].map(({ title, value, icon: Icon, color, sub }) => (
-          <Card key={title} className={`bg-bg-surface border-border-subtle hover:shadow-md transition-all group`}>
+          <Card key={title} className={`bg-surface border-borderSubtle hover:shadow-md transition-all group`}>
             <CardHeader className="flex flex-row items-center justify-between pb-1 pt-5 px-5">
               <CardTitle className="text-xs font-medium text-text-muted uppercase tracking-wider">{title}</CardTitle>
-              <div className={`p-2 rounded-lg bg-${color}/10 text-${color}`}><Icon className="w-4 h-4" /></div>
+              <div className={`p-2 rounded-lg ${SUMMARY_COLORS[color] ?? "bg-surface-raised/50 text-text-muted"}`}><Icon className="w-4 h-4" /></div>
             </CardHeader>
             <CardContent className="px-5 pb-5">
               <div className="text-2xl font-display font-bold text-text-primary">{value}</div>
@@ -345,7 +359,7 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
       {events.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cost timeline area chart */}
-          <Card className="bg-bg-surface border-border-subtle">
+          <Card className="bg-surface border-borderSubtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-display">Cost Timeline</CardTitle>
               <CardDescription className="text-xs">Daily spend over the last 14 days</CardDescription>
@@ -373,14 +387,14 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
           </Card>
 
           {/* Cost by resource type bar chart */}
-          <Card className="bg-bg-surface border-border-subtle">
+          <Card className="bg-surface border-borderSubtle">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-display">Cost by Resource</CardTitle>
               <CardDescription className="text-xs">Breakdown by resource type this cycle</CardDescription>
             </CardHeader>
             <CardContent>
               {costByType.length === 0 ? (
-                <div className="h-[220px] flex items-center justify-center text-text-muted text-sm border border-dashed border-border-subtle rounded-lg">
+                <div className="h-[220px] flex items-center justify-center text-text-muted text-sm border border-dashed border-borderSubtle rounded-lg">
                   No billed usage yet
                 </div>
               ) : (
@@ -415,16 +429,16 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
               {events.length > 0 ? `Showing ${events.length} events this billing cycle.` : "No events recorded this billing cycle."}
             </p>
           </div>
-          <Button variant="outline" className="text-text-primary text-xs h-8 gap-1.5 border-border-subtle hover:bg-bg-surface-raised">
+          <Button variant="outline" className="text-text-primary text-xs h-8 gap-1.5 border-borderSubtle hover:bg-surface-raised">
             Export CSV <ArrowUpRight className="w-3.5 h-3.5" />
           </Button>
         </div>
 
         {events.length > 0 ? (
-          <div className="rounded-xl border border-border-subtle bg-bg-surface overflow-hidden shadow-sm">
+          <div className="rounded-xl border border-borderSubtle bg-surface overflow-hidden shadow-sm">
             <Table>
-              <TableHeader className="bg-bg-surface-raised/50">
-                <TableRow className="border-border-subtle hover:bg-transparent">
+              <TableHeader className="bg-surface-raised/50">
+                <TableRow className="border-borderSubtle hover:bg-transparent">
                   <TableHead className="text-text-muted font-medium text-xs uppercase tracking-wider w-[180px]">Date</TableHead>
                   <TableHead className="text-text-muted font-medium text-xs uppercase tracking-wider w-[140px]">Type</TableHead>
                   <TableHead className="text-text-muted font-medium text-xs uppercase tracking-wider">Resource</TableHead>
@@ -441,13 +455,13 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
                   }[event.type?.toLowerCase()] || <Activity className="h-3.5 w-3.5 text-text-muted" />;
 
                   return (
-                    <TableRow key={event.id} className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors group">
+                    <TableRow key={event.id} className="border-borderSubtle hover:bg-surface-raised/50 transition-colors group">
                       <TableCell className="text-text-muted text-xs whitespace-nowrap" suppressHydrationWarning>
                         {new Date(event.date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </TableCell>
                       <TableCell>
                         <span className="flex items-center gap-2">
-                          <span className="p-1 rounded bg-bg-surface-raised">{typeIcon}</span>
+                          <span className="p-1 rounded bg-surface-raised">{typeIcon}</span>
                           <span className="font-medium text-text-primary text-xs capitalize">{event.type}</span>
                         </span>
                       </TableCell>
@@ -467,8 +481,8 @@ export function UsageClient({ initialSubscription, initialInvoices }: UsageClien
             </Table>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center border border-border-subtle border-dashed rounded-xl bg-bg-surface">
-            <div className="p-4 bg-bg-surface-raised rounded-full mb-3">
+          <div className="flex flex-col items-center justify-center py-20 text-center border border-borderSubtle border-dashed rounded-xl bg-surface">
+            <div className="p-4 bg-surface-raised rounded-full mb-3">
               <Activity className="h-8 w-8 text-text-muted opacity-50" />
             </div>
             <h4 className="text-text-primary font-medium mb-1">No Usage Events</h4>

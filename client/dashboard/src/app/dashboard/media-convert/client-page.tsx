@@ -18,7 +18,7 @@ interface TranscodeJob {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  queued:     "bg-bg-surface-raised text-text-muted",
+  queued:     "bg-surface-raised text-text-muted",
   processing: "bg-accent-motion/20 text-accent-motion border-accent-motion/30",
   completed:  "bg-success/10 text-success border-success/20",
   failed:     "bg-danger/10 text-danger border-danger/20",
@@ -85,33 +85,33 @@ export function MediaConvertClient({ initialJobs }: MediaConvertClientProps) {
       </div>
 
       {showSkeleton ? (
-        <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+        <div className="rounded-md border border-borderSubtle bg-surface overflow-hidden">
           <Table>
-            <TableHeader className="bg-bg-surface-raised">
-              <TableRow className="border-border-subtle">
-                <TableHead><div className="h-4 bg-bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
-                <TableHead><div className="h-4 bg-bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
-                <TableHead><div className="h-4 bg-bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
-                <TableHead className="text-right"><div className="h-4 bg-bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
+            <TableHeader className="bg-surface-raised">
+              <TableRow className="border-borderSubtle">
+                <TableHead><div className="h-4 bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
+                <TableHead><div className="h-4 bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
+                <TableHead><div className="h-4 bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
+                <TableHead className="text-right"><div className="h-4 bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {[1, 2, 3].map(i => (
-                <TableRow key={i} className="border-border-subtle">
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-3/4 animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-3/4 animate-pulse" /></TableCell>
-                  <TableCell><div className="h-6 bg-bg-surface-raised/30 rounded w-20 animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
+                <TableRow key={i} className="border-borderSubtle">
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-3/4 animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-3/4 animate-pulse" /></TableCell>
+                  <TableCell><div className="h-6 bg-surface-raised/30 rounded w-20 animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       ) : (
-        <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+        <div className="rounded-md border border-borderSubtle bg-surface overflow-hidden">
           <Table>
-            <TableHeader className="bg-bg-surface-raised">
-              <TableRow className="border-border-subtle hover:bg-transparent">
+            <TableHeader className="bg-surface-raised">
+              <TableRow className="border-borderSubtle hover:bg-transparent">
                 <TableHead className="text-text-muted font-medium">Job ID</TableHead>
                 <TableHead className="text-text-muted font-medium">Video ID</TableHead>
                 <TableHead className="text-text-muted font-medium">Status</TableHead>
@@ -120,7 +120,7 @@ export function MediaConvertClient({ initialJobs }: MediaConvertClientProps) {
             </TableHeader>
             <TableBody>
               {jobs.length === 0 ? (
-                <TableRow className="border-border-subtle hover:bg-transparent">
+                <TableRow className="border-borderSubtle hover:bg-transparent">
                   <TableCell colSpan={4} className="h-32 text-center text-text-muted">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <FileCode2 className="h-8 w-8 text-border-subtle opacity-50" />
@@ -130,7 +130,7 @@ export function MediaConvertClient({ initialJobs }: MediaConvertClientProps) {
                 </TableRow>
               ) : (
                 jobs.map((job) => (
-                  <TableRow key={job.id} className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors">
+                  <TableRow key={job.id} className="border-borderSubtle hover:bg-surface-raised/50 transition-colors">
                     <TableCell className="font-mono text-xs text-text-muted">{job.id.slice(0, 8)}…</TableCell>
                     <TableCell className="font-mono text-xs text-text-primary">{job.video_id.slice(0, 8)}…</TableCell>
                     <TableCell>

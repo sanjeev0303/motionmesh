@@ -11,7 +11,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   const statusStyles: Record<JobStatus, string> = {
     ready: "bg-success/10 text-success border-success/20",
     processing: "bg-accent-motion/10 text-accent-motion border-accent-motion/20",
-    queued: "bg-bg-surface-raised text-text-muted border-border-subtle",
+    queued: "bg-surface-raised text-text-muted border-borderSubtle",
     failed: "bg-danger/10 text-danger border-danger/20",
   };
 

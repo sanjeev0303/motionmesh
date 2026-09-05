@@ -108,7 +108,7 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
 
   if (showSkeleton) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-text-muted gap-4 border border-border-subtle border-dashed rounded-xl bg-bg-surface">
+      <div className="flex flex-col items-center justify-center py-24 text-text-muted gap-4 border border-borderSubtle border-dashed rounded-xl bg-surface">
         <Loader2 className="w-8 h-8 animate-spin text-accent-motion" />
         <p className="text-sm font-medium">Loading billing data…</p>
       </div>
@@ -118,7 +118,7 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
   return (
     <div className="space-y-8 pb-8">
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border-subtle pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-borderSubtle pb-6">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-display font-bold text-text-primary tracking-tight">Billing</h1>
@@ -132,7 +132,7 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* ── Current Plan / Balance ── */}
-        <Card className="relative overflow-hidden border-border-subtle bg-bg-surface group hover:border-accent-motion/40 transition-all duration-300">
+        <Card className="relative overflow-hidden border-borderSubtle bg-surface group hover:border-accent-motion/40 transition-all duration-300">
           <div className="absolute -top-24 -right-24 w-64 h-64 bg-accent-motion/10 rounded-full blur-3xl group-hover:bg-accent-motion/20 transition-colors duration-500 pointer-events-none" />
           <CardHeader className="relative z-10 pb-4">
             <div className="flex items-center justify-between">
@@ -148,7 +148,7 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 relative z-10">
-            <div className="space-y-1 p-5 rounded-xl border border-border-subtle bg-bg-surface-raised/50">
+            <div className="space-y-1 p-5 rounded-xl border border-borderSubtle bg-surface-raised/50">
               <p className="text-sm font-medium text-text-muted uppercase tracking-wider">Prepaid Balance</p>
               <div className="flex items-baseline gap-2 pt-1">
                 <span className="text-4xl font-display font-bold tracking-tight text-text-primary">${balance.toFixed(2)}</span>
@@ -163,7 +163,7 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
                     <ArrowUpRight className="w-4 h-4" /> Add Funds
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px] bg-bg-surface border-border-subtle">
+                <DialogContent className="sm:max-w-[425px] bg-surface border-borderSubtle">
                   <DialogHeader>
                     <DialogTitle className="text-text-primary">Add to Balance</DialogTitle>
                   </DialogHeader>
@@ -174,7 +174,7 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
                           key={amt} 
                           type="button" 
                           variant="outline" 
-                          className={`font-mono border-border-subtle hover:bg-bg-surface-raised ${amountValue === amt.toString() ? 'border-accent-motion text-accent-motion bg-accent-motion/10' : 'text-text-primary'}`}
+                          className={`font-mono border-borderSubtle hover:bg-surface-raised ${amountValue === amt.toString() ? 'border-accent-motion text-accent-motion bg-accent-motion/10' : 'text-text-primary'}`}
                           onClick={() => setAmountValue(amt.toString())}
                         >
                           ${amt}
@@ -192,23 +192,23 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
                         required 
                         value={amountValue}
                         onChange={(e) => setAmountValue(e.target.value)}
-                        className="text-text-primary bg-bg-surface-raised border-border-subtle focus-visible:ring-accent-motion"
+                        className="text-text-primary bg-surface-raised border-borderSubtle focus-visible:ring-accent-motion"
                       />
                     </div>
-                    <div className="flex justify-end gap-3 pt-2 border-t border-border-subtle">
-                      <Button type="button" variant="outline" className="text-text-primary border-border-subtle hover:bg-bg-surface-raised" onClick={() => setIsTopUpOpen(false)}>Cancel</Button>
+                    <div className="flex justify-end gap-3 pt-2 border-t border-borderSubtle">
+                      <Button type="button" variant="outline" className="text-text-primary border-borderSubtle hover:bg-surface-raised" onClick={() => setIsTopUpOpen(false)}>Cancel</Button>
                       <Button type="submit" className="bg-accent-motion text-black hover:bg-accent-motion/90">Process Payment</Button>
                     </div>
                   </form>
                 </DialogContent>
               </Dialog>
-              <Button variant="outline" className="flex-1 text-text-primary border-border-subtle hover:bg-bg-surface-raised" onClick={handlePortalRedirect}>Change Plan</Button>
+              <Button variant="outline" className="flex-1 text-text-primary border-borderSubtle hover:bg-surface-raised" onClick={handlePortalRedirect}>Change Plan</Button>
             </div>
           </CardContent>
         </Card>
 
         {/* ── Payment Method ── */}
-        <Card className="relative overflow-hidden border-border-subtle bg-bg-surface group hover:border-accent-mesh/40 transition-all duration-300">
+        <Card className="relative overflow-hidden border-borderSubtle bg-surface group hover:border-accent-mesh/40 transition-all duration-300">
           <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-accent-mesh/10 rounded-full blur-3xl group-hover:bg-accent-mesh/20 transition-colors duration-500 pointer-events-none" />
           <CardHeader className="relative z-10 pb-4">
             <CardTitle className="text-xl font-display flex items-center gap-2 text-text-primary">
@@ -220,9 +220,9 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
             <CardDescription className="pt-2 text-sm">Primary card used for auto-recharge and billing.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 relative z-10">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-xl border border-border-subtle bg-bg-surface-raised/50">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-xl border border-borderSubtle bg-surface-raised/50">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-10 bg-bg-surface rounded-md border border-border-subtle flex items-center justify-center shadow-sm">
+                <div className="w-14 h-10 bg-surface rounded-md border border-borderSubtle flex items-center justify-center shadow-sm">
                   <CreditCard className="w-6 h-6 text-text-muted" />
                 </div>
                 <div>
@@ -234,7 +234,7 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
                 <CheckCircle2 className="w-3.5 h-3.5" /> Default
               </span>
             </div>
-            <Button variant="outline" className="w-full text-text-primary border-border-subtle hover:bg-bg-surface-raised gap-2" onClick={handlePortalRedirect}>
+            <Button variant="outline" className="w-full text-text-primary border-borderSubtle hover:bg-surface-raised gap-2" onClick={handlePortalRedirect}>
               Update Payment Method <ArrowUpRight className="w-4 h-4 text-text-muted" />
             </Button>
           </CardContent>
@@ -248,16 +248,16 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
             <h3 className="text-lg font-display font-semibold text-text-primary">Invoice History</h3>
             <p className="text-text-muted text-xs mt-0.5">Past billing statements and receipts.</p>
           </div>
-          <Button variant="outline" className="text-text-primary text-xs h-8 gap-1.5 border-border-subtle hover:bg-bg-surface-raised" onClick={handlePortalRedirect}>
+          <Button variant="outline" className="text-text-primary text-xs h-8 gap-1.5 border-borderSubtle hover:bg-surface-raised" onClick={handlePortalRedirect}>
             View All in Stripe <ArrowUpRight className="w-3.5 h-3.5" />
           </Button>
         </div>
 
         {invoices.length > 0 ? (
-          <div className="rounded-xl border border-border-subtle bg-bg-surface overflow-hidden shadow-sm">
+          <div className="rounded-xl border border-borderSubtle bg-surface overflow-hidden shadow-sm">
             <Table>
-              <TableHeader className="bg-bg-surface-raised/50">
-                <TableRow className="border-border-subtle hover:bg-transparent">
+              <TableHeader className="bg-surface-raised/50">
+                <TableRow className="border-borderSubtle hover:bg-transparent">
                   <TableHead className="text-text-muted font-medium text-xs uppercase tracking-wider w-[220px]">Date</TableHead>
                   <TableHead className="text-text-muted font-medium text-xs uppercase tracking-wider">Status</TableHead>
                   <TableHead className="text-text-muted font-medium text-xs uppercase tracking-wider text-right">Amount</TableHead>
@@ -266,7 +266,7 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
               </TableHeader>
               <TableBody>
                 {invoices.map((inv) => (
-                  <TableRow key={inv.id} className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors group">
+                  <TableRow key={inv.id} className="border-borderSubtle hover:bg-surface-raised/50 transition-colors group">
                     <TableCell className="text-text-primary text-sm font-medium" suppressHydrationWarning>
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-text-muted" />
@@ -285,7 +285,7 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
                       ${inv.amount.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" className="gap-2 text-text-muted hover:text-text-primary hover:bg-bg-surface-raised" onClick={() => toast.success("Downloading invoice...")}>
+                      <Button variant="ghost" size="sm" className="gap-2 text-text-muted hover:text-text-primary hover:bg-surface-raised" onClick={() => toast.success("Downloading invoice...")}>
                         <Download className="w-4 h-4" /> PDF
                       </Button>
                     </TableCell>
@@ -295,8 +295,8 @@ export function BillingClient({ initialSubscription, initialInvoices }: BillingC
             </Table>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center border border-border-subtle border-dashed rounded-xl bg-bg-surface">
-            <div className="p-4 bg-bg-surface-raised rounded-full mb-3">
+          <div className="flex flex-col items-center justify-center py-20 text-center border border-borderSubtle border-dashed rounded-xl bg-surface">
+            <div className="p-4 bg-surface-raised rounded-full mb-3">
               <FileText className="h-8 w-8 text-text-muted opacity-50" />
             </div>
             <h4 className="text-text-primary font-medium mb-1">No Invoices Found</h4>

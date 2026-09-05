@@ -37,7 +37,7 @@ const TYPE_COLORS: Record<string, string> = {
 const CustomTooltipBar = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-bg-surface border border-border-subtle p-3 rounded-lg shadow-xl text-xs">
+      <div className="bg-surface border border-borderSubtle p-3 rounded-lg shadow-xl text-xs">
         <p className="font-semibold text-text-primary mb-2 capitalize">{label} Cost</p>
         {payload.map((p: any) => (
           <div key={p.name} className="flex items-center gap-2">
@@ -74,7 +74,7 @@ export function UsageCharts({ events }: UsageChartsProps) {
   if (costByType.length === 0) return null;
 
   return (
-    <Card className="bg-bg-surface border-border-subtle shadow-sm col-span-full mb-6">
+    <Card className="bg-surface border-borderSubtle shadow-sm col-span-full mb-6">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-display text-text-primary">Cost Breakdown</CardTitle>
         <CardDescription className="text-xs">Total cost by resource type this billing cycle</CardDescription>

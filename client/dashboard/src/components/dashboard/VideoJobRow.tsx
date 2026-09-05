@@ -31,15 +31,15 @@ export function VideoJobRow({ video }: VideoJobRowProps) {
   const progress = video.status === "processing" ? 50 : 0;
 
   return (
-    <TableRow className="border-border-subtle hover:bg-bg-surface-raised/50 group transition-colors">
+    <TableRow className="border-borderSubtle hover:bg-surface-raised/50 group transition-colors">
       <TableCell className="w-[100px]">
         {video.thumbnail_key && video.status === "ready" ? (
-          <div className="w-16 h-9 rounded bg-bg-surface-raised overflow-hidden border border-border-subtle">
+          <div className="w-16 h-9 rounded bg-surface-raised overflow-hidden border border-borderSubtle">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`/api/videos/${video.id}/thumbnail`} alt="Thumbnail" className="w-full h-full object-cover" />
           </div>
         ) : (
-          <div className="w-16 h-9 rounded bg-bg-surface-raised flex items-center justify-center border border-border-subtle">
+          <div className="w-16 h-9 rounded bg-surface-raised flex items-center justify-center border border-borderSubtle">
             <ImageIcon className="h-4 w-4 text-text-muted" />
           </div>
         )}

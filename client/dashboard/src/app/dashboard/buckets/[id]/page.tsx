@@ -113,14 +113,14 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
   if (!bucket) {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-center">
-        <div className="h-14 w-14 rounded-full bg-bg-surface-raised border border-border-subtle flex items-center justify-center mb-5">
+        <div className="h-14 w-14 rounded-full bg-surface-raised border border-borderSubtle flex items-center justify-center mb-5">
           <ArrowLeft className="h-7 w-7 text-text-muted" />
         </div>
         <h3 className="text-xl font-semibold text-text-primary mb-2">Bucket not found</h3>
         <p className="text-text-muted text-sm max-w-xs mb-6">
           This bucket doesn&apos;t exist or may have been deleted.
         </p>
-        <Button variant="outline" asChild className="border-border-subtle text-text-muted hover:text-text-primary">
+        <Button variant="outline" asChild className="border-borderSubtle text-text-muted hover:text-text-primary">
           <Link href="/dashboard/buckets">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Buckets
@@ -186,7 +186,7 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
               <Input 
                 value={editedName} 
                 onChange={(e) => setEditedName(e.target.value)}
-                className="text-2xl font-display font-bold bg-bg-surface border-border-subtle h-10 px-3 w-[300px]"
+                className="text-2xl font-display font-bold bg-surface border-borderSubtle h-10 px-3 w-[300px]"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSaveName();
@@ -223,7 +223,7 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
               Delete Bucket
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-bg-surface border-border-subtle text-text-primary sm:max-w-[425px]">
+          <DialogContent className="bg-surface border-borderSubtle text-text-primary sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle className="font-display">Delete Bucket</DialogTitle>
               <DialogDescription className="text-text-muted">
@@ -243,7 +243,7 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-6 rounded-lg border border-border-subtle bg-bg-surface space-y-6">
+        <div className="p-6 rounded-lg border border-borderSubtle bg-surface space-y-6">
           <div>
             <h3 className="text-lg font-medium text-text-primary mb-1">Storage Usage</h3>
             <p className="text-sm text-text-muted mb-4">Total storage utilized by objects in this bucket.</p>
@@ -255,7 +255,7 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
           </div>
         </div>
         
-        <div className="p-6 rounded-lg border border-border-subtle bg-bg-surface space-y-6">
+        <div className="p-6 rounded-lg border border-borderSubtle bg-surface space-y-6">
           <div>
             <h3 className="text-lg font-medium text-text-primary mb-1">Egress Usage</h3>
             <p className="text-sm text-text-muted mb-4">Total data transferred out from this bucket this billing cycle.</p>
@@ -275,14 +275,14 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
         </div>
         
         {objectsLoading ? (
-          <div className="p-12 text-center border border-border-subtle border-dashed rounded-lg bg-bg-surface">
+          <div className="p-12 text-center border border-borderSubtle border-dashed rounded-lg bg-surface">
             <p className="text-text-muted">Loading objects...</p>
           </div>
         ) : Object.keys(groupedObjects).length > 0 ? (
-          <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+          <div className="rounded-md border border-borderSubtle bg-surface overflow-hidden">
             <Table>
-              <TableHeader className="bg-bg-surface-raised">
-                <TableRow className="border-border-subtle hover:bg-transparent">
+              <TableHeader className="bg-surface-raised">
+                <TableRow className="border-borderSubtle hover:bg-transparent">
                   <TableHead className="text-text-muted font-medium w-[400px]">Prefix / Object Key</TableHead>
                   <TableHead className="text-text-muted font-medium w-[150px]">Content Type</TableHead>
                   <TableHead className="text-text-muted font-medium text-right">Size</TableHead>
@@ -298,14 +298,14 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
                   return (
                     <React.Fragment key={prefix}>
                       <TableRow 
-                        className="border-border-subtle hover:bg-bg-surface-raised/30 transition-colors cursor-pointer"
+                        className="border-borderSubtle hover:bg-surface-raised/30 transition-colors cursor-pointer"
                         onClick={() => togglePrefix(prefix)}
                       >
                         <TableCell className="font-medium text-text-primary flex items-center gap-2">
                           {isExpanded ? <ChevronDown className="h-4 w-4 text-text-muted" /> : <ChevronRight className="h-4 w-4 text-text-muted" />}
                           <Folder className="h-4 w-4 text-accent-motion" />
                           <span className="truncate">{prefix}</span>
-                          <span className="ml-2 text-xs text-text-muted bg-bg-surface-raised px-1.5 py-0.5 rounded-full">
+                          <span className="ml-2 text-xs text-text-muted bg-surface-raised px-1.5 py-0.5 rounded-full">
                             {objs.length} files
                           </span>
                         </TableCell>
@@ -317,7 +317,7 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
                       </TableRow>
                       
                       {isExpanded && objs.map((obj) => (
-                        <TableRow key={obj.id} className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors bg-bg-surface/50">
+                        <TableRow key={obj.id} className="border-borderSubtle hover:bg-surface-raised/50 transition-colors bg-surface/50">
                           <TableCell className="font-medium text-text-primary flex items-center gap-2 pl-10">
                             <FileIcon className="h-4 w-4 text-text-muted" />
                             <span className="truncate text-sm">{obj.key.substring(prefix.length)}</span>
@@ -336,7 +336,7 @@ export default function BucketDetailPage({ params }: { params: { id: string } })
             </Table>
           </div>
         ) : (
-          <div className="p-12 text-center border border-border-subtle border-dashed rounded-lg bg-bg-surface">
+          <div className="p-12 text-center border border-borderSubtle border-dashed rounded-lg bg-surface">
             <p className="text-text-muted">No objects found in this bucket.</p>
           </div>
         )}

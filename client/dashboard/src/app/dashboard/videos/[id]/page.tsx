@@ -57,14 +57,14 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
   if (!video) {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-center">
-        <div className="h-14 w-14 rounded-full bg-bg-surface-raised border border-border-subtle flex items-center justify-center mb-5">
+        <div className="h-14 w-14 rounded-full bg-surface-raised border border-borderSubtle flex items-center justify-center mb-5">
           <AlertCircle className="h-7 w-7 text-text-muted" />
         </div>
         <h3 className="text-xl font-semibold text-text-primary mb-2">Video not found</h3>
         <p className="text-text-muted text-sm max-w-xs mb-6">
           This video doesn&apos;t exist or may have been deleted.
         </p>
-        <Button variant="outline" asChild className="border-border-subtle text-text-muted hover:text-text-primary">
+        <Button variant="outline" asChild className="border-borderSubtle text-text-muted hover:text-text-primary">
           <Link href="/videos">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Videos
@@ -145,7 +145,7 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
               Delete Video
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-bg-surface border-border-subtle text-text-primary sm:max-w-[425px]">
+          <DialogContent className="bg-surface border-borderSubtle text-text-primary sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle className="font-display">Delete Video</DialogTitle>
               <DialogDescription className="text-text-muted">
@@ -173,17 +173,17 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-xl overflow-hidden border border-border-subtle bg-bg-base shadow-lg relative aspect-video group">
+          <div className="rounded-xl overflow-hidden border border-borderSubtle bg-base shadow-lg relative aspect-video group">
             {video.status === "ready" ? (
               <MotionmeshPlayer videoTrackingId={video.id} />
             ) : video.status === "failed" ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-bg-surface text-center p-6">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface text-center p-6">
                 <AlertCircle className="w-10 h-10 text-danger mb-4" />
                 <h3 className="text-text-primary font-medium mb-2">Transcoding Failed</h3>
                 <p className="text-text-muted text-sm max-w-md">{video.error_message}</p>
               </div>
             ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-bg-surface">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface">
                 {/* Spinner hidden for reduced-motion; replaced with static indicator */}
                 <div className="motion-safe:animate-spin w-10 h-10 border-4 border-accent-motion/20 border-t-accent-motion rounded-full mb-4" />
                 <p className="text-text-primary font-medium">
@@ -203,10 +203,10 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
           {video.renditions && (
             <div className="space-y-4">
               <h3 className="text-xl font-medium text-text-primary">Renditions</h3>
-              <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+              <div className="rounded-md border border-borderSubtle bg-surface overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-bg-surface-raised">
-                    <TableRow className="border-border-subtle hover:bg-transparent">
+                  <TableHeader className="bg-surface-raised">
+                    <TableRow className="border-borderSubtle hover:bg-transparent">
                       <TableHead className="text-text-muted font-medium">Resolution</TableHead>
                       <TableHead className="text-text-muted font-medium">Bitrate</TableHead>
                       <TableHead className="text-text-muted font-medium">Format</TableHead>
@@ -215,7 +215,7 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
                   </TableHeader>
                   <TableBody>
                     {video.renditions.map((r) => (
-                      <TableRow key={r.res} className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors">
+                      <TableRow key={r.res} className="border-borderSubtle hover:bg-surface-raised/50 transition-colors">
                         <TableCell className="font-mono text-text-primary text-sm">{r.res}</TableCell>
                         <TableCell className="font-mono text-text-muted text-sm">{r.bitrate}</TableCell>
                         <TableCell className="font-mono text-text-muted text-sm">{r.format}</TableCell>
@@ -231,10 +231,10 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
           {video.captions && (
             <div className="space-y-4">
               <h3 className="text-xl font-medium text-text-primary">Caption Tracks</h3>
-              <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+              <div className="rounded-md border border-borderSubtle bg-surface overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-bg-surface-raised">
-                    <TableRow className="border-border-subtle hover:bg-transparent">
+                  <TableHeader className="bg-surface-raised">
+                    <TableRow className="border-borderSubtle hover:bg-transparent">
                       <TableHead className="text-text-muted font-medium">Language</TableHead>
                       <TableHead className="text-text-muted font-medium">Status</TableHead>
                       <TableHead className="text-text-muted font-medium text-right">Size</TableHead>
@@ -242,7 +242,7 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
                   </TableHeader>
                   <TableBody>
                     {video.captions.map((c) => (
-                      <TableRow key={c.lang} className="border-border-subtle hover:bg-bg-surface-raised/50 transition-colors">
+                      <TableRow key={c.lang} className="border-borderSubtle hover:bg-surface-raised/50 transition-colors">
                         <TableCell className="font-medium text-text-primary">{c.lang}</TableCell>
                         <TableCell>
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-success/10 text-success">
@@ -260,7 +260,7 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
         </div>
 
         <div className="space-y-6">
-          <div className="p-6 rounded-lg border border-border-subtle bg-bg-surface">
+          <div className="p-6 rounded-lg border border-borderSubtle bg-surface">
             <h3 className="text-lg font-medium text-text-primary mb-4">Metadata</h3>
             <dl className="space-y-4">
               <div>

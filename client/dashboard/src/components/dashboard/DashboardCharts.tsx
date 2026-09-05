@@ -39,7 +39,7 @@ const BUCKET_COLORS = ["#00F0FF", "#3B82F6", "#8B5CF6", "#EC4899", "#10B981", "#
 const CustomTooltipArea = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-bg-surface border border-border-subtle p-3 rounded-lg shadow-xl text-xs">
+      <div className="bg-surface border border-borderSubtle p-3 rounded-lg shadow-xl text-xs">
         <p className="font-semibold text-text-primary mb-2">{label}</p>
         {payload.map((p: any) => (
           <div key={p.name} className="flex items-center gap-2">
@@ -57,7 +57,7 @@ const CustomTooltipArea = ({ active, payload, label }: any) => {
 const CustomTooltipPie = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-bg-surface border border-border-subtle p-3 rounded-lg shadow-xl text-xs">
+      <div className="bg-surface border border-borderSubtle p-3 rounded-lg shadow-xl text-xs">
         <p className="font-semibold text-text-primary">{payload[0].name}</p>
         <p className="text-text-muted font-mono">{formatBytes(payload[0].value)}</p>
       </div>
@@ -114,7 +114,7 @@ export function DashboardCharts({ buckets, videos }: DashboardChartsProps) {
       {/* Row 1: Upload timeline (wide) + Status breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Upload Activity – Area Chart */}
-        <Card className="lg:col-span-2 bg-bg-surface border-border-subtle">
+        <Card className="lg:col-span-2 bg-surface border-borderSubtle">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-display text-text-primary">Upload Activity</CardTitle>
             <CardDescription className="text-xs">Videos uploaded over the last 14 days</CardDescription>
@@ -150,14 +150,14 @@ export function DashboardCharts({ buckets, videos }: DashboardChartsProps) {
         </Card>
 
         {/* Video Status Breakdown */}
-        <Card className="bg-bg-surface border-border-subtle">
+        <Card className="bg-surface border-borderSubtle">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-display text-text-primary">Video Status</CardTitle>
             <CardDescription className="text-xs">Breakdown by processing state</CardDescription>
           </CardHeader>
           <CardContent>
             {videos.length === 0 ? (
-              <div className="h-[240px] flex items-center justify-center text-text-muted text-sm border border-dashed border-border-subtle rounded-lg">
+              <div className="h-[240px] flex items-center justify-center text-text-muted text-sm border border-dashed border-borderSubtle rounded-lg">
                 No video data
               </div>
             ) : (
@@ -180,7 +180,7 @@ export function DashboardCharts({ buckets, videos }: DashboardChartsProps) {
                         </div>
                         <span className="text-text-muted font-mono">{count} <span className="text-text-muted/50">({pct}%)</span></span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-bg-surface-raised overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-surface-raised overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-700"
                           style={{ width: `${pct}%`, background: STATUS_COLORS[status] }}
@@ -190,7 +190,7 @@ export function DashboardCharts({ buckets, videos }: DashboardChartsProps) {
                   );
                 })}
 
-                <div className="mt-4 grid grid-cols-2 gap-2 pt-2 border-t border-border-subtle">
+                <div className="mt-4 grid grid-cols-2 gap-2 pt-2 border-t border-borderSubtle">
                   <div className="text-center">
                     <p className="text-2xl font-display font-bold text-text-primary">{videos.length}</p>
                     <p className="text-xs text-text-muted">Total</p>
@@ -211,14 +211,14 @@ export function DashboardCharts({ buckets, videos }: DashboardChartsProps) {
       {/* Row 2: Storage donut + Bucket storage bar */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Storage Distribution Donut */}
-        <Card className="bg-bg-surface border-border-subtle">
+        <Card className="bg-surface border-borderSubtle">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-display text-text-primary">Storage Distribution</CardTitle>
             <CardDescription className="text-xs">Total: {formatBytes(totalStorage)}</CardDescription>
           </CardHeader>
           <CardContent>
             {storageData.length === 0 ? (
-              <div className="h-[240px] flex items-center justify-center text-text-muted text-sm border border-dashed border-border-subtle rounded-lg">
+              <div className="h-[240px] flex items-center justify-center text-text-muted text-sm border border-dashed border-borderSubtle rounded-lg">
                 No storage data
               </div>
             ) : (
@@ -263,14 +263,14 @@ export function DashboardCharts({ buckets, videos }: DashboardChartsProps) {
         </Card>
 
         {/* Per-Bucket Storage Bar */}
-        <Card className="bg-bg-surface border-border-subtle">
+        <Card className="bg-surface border-borderSubtle">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-display text-text-primary">Bucket Storage</CardTitle>
             <CardDescription className="text-xs">Storage used per bucket (bytes)</CardDescription>
           </CardHeader>
           <CardContent>
             {buckets.length === 0 ? (
-              <div className="h-[240px] flex items-center justify-center text-text-muted text-sm border border-dashed border-border-subtle rounded-lg">
+              <div className="h-[240px] flex items-center justify-center text-text-muted text-sm border border-dashed border-borderSubtle rounded-lg">
                 No buckets found
               </div>
             ) : (

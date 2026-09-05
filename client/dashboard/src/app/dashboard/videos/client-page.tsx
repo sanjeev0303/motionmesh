@@ -267,14 +267,14 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
               <Button
                 onClick={openFilePicker}
                 disabled={isUploading}
-                className="w-full bg-accent-motion text-bg-base hover:bg-accent-motion/90"
+                className="w-full bg-accent-motion text-black hover:bg-accent-motion/90"
               >
                 <UploadCloud className={`mr-2 h-4 w-4 ${isUploading ? "animate-pulse" : ""}`} />
                 {isUploading ? `Uploading… ${uploadProgress}%` : "Select File & Upload"}
               </Button>
               {isUploading && uploadProgress > 0 && (
                 <div className="space-y-1">
-                  <div className="h-2 w-full rounded-full bg-bg-surface-raised overflow-hidden">
+                  <div className="h-2 w-full rounded-full bg-surface-raised overflow-hidden">
                     <div
                       className="h-full bg-accent-motion rounded-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
@@ -298,7 +298,7 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
         <Button
           onClick={() => setIsUploadDialogOpen(true)}
           disabled={isUploading}
-          className="bg-accent-motion text-bg-base hover:bg-accent-motion/90"
+          className="bg-accent-motion text-black hover:bg-accent-motion/90"
         >
           <UploadCloud className={`mr-2 h-4 w-4 ${isUploading ? "animate-pulse" : ""}`} />
           {isUploading ? "Uploading..." : "Upload Video"}
@@ -316,37 +316,37 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
           </Button>
         </div>
       ) : showSkeleton ? (
-        <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+        <div className="rounded-md border border-borderSubtle bg-surface overflow-hidden">
           <Table>
-            <TableHeader className="bg-bg-surface-raised">
-              <TableRow className="border-border-subtle">
+            <TableHeader className="bg-surface-raised">
+              <TableRow className="border-borderSubtle">
                 <TableHead className="w-[100px]"></TableHead>
-                <TableHead className="w-[400px]"><div className="h-4 bg-bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
-                <TableHead className="w-[100px] text-right"><div className="h-4 bg-bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
-                <TableHead className="w-[150px]"><div className="h-4 bg-bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
-                <TableHead className="w-[150px] text-right"><div className="h-4 bg-bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
-                <TableHead className="w-[150px] text-right"><div className="h-4 bg-bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
+                <TableHead className="w-[400px]"><div className="h-4 bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
+                <TableHead className="w-[100px] text-right"><div className="h-4 bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
+                <TableHead className="w-[150px]"><div className="h-4 bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
+                <TableHead className="w-[150px] text-right"><div className="h-4 bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
+                <TableHead className="w-[150px] text-right"><div className="h-4 bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {[1, 2, 3].map(i => (
-                <TableRow key={i} className="border-border-subtle">
-                  <TableCell><div className="h-16 w-24 bg-bg-surface-raised/30 rounded animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
-                  <TableCell><div className="h-6 bg-bg-surface-raised/30 rounded w-20 animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
+                <TableRow key={i} className="border-borderSubtle">
+                  <TableCell><div className="h-16 w-24 bg-surface-raised/30 rounded animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
+                  <TableCell><div className="h-6 bg-surface-raised/30 rounded w-20 animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       ) : hasVideos ? (
-        <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+        <div className="rounded-md border border-borderSubtle bg-surface overflow-hidden">
           <Table>
-            <TableHeader className="bg-bg-surface-raised">
-              <TableRow className="border-border-subtle hover:bg-transparent">
+            <TableHeader className="bg-surface-raised">
+              <TableRow className="border-borderSubtle hover:bg-transparent">
                 <TableHead className="w-[100px]" />
                 <TableHead className="text-text-muted font-medium w-[400px]">Title</TableHead>
                 <TableHead className="text-text-muted font-medium text-right w-[100px]">Duration</TableHead>
@@ -363,8 +363,8 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
           </Table>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-24 text-center border border-border-subtle border-dashed rounded-lg bg-bg-surface">
-          <div className="h-12 w-12 rounded-full bg-bg-surface-raised flex items-center justify-center mb-4">
+        <div className="flex flex-col items-center justify-center py-24 text-center border border-borderSubtle border-dashed rounded-lg bg-surface">
+          <div className="h-12 w-12 rounded-full bg-surface-raised flex items-center justify-center mb-4">
             <UploadCloud className="h-6 w-6 text-text-muted" />
           </div>
           <h3 className="text-lg font-medium text-text-primary mb-2">No videos yet</h3>
@@ -374,7 +374,7 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
           <Button
             onClick={() => setIsUploadDialogOpen(true)}
             disabled={isUploading}
-            className="bg-accent-motion text-bg-base hover:bg-accent-motion/90"
+            className="bg-accent-motion text-black hover:bg-accent-motion/90"
           >
             <UploadCloud className={`mr-2 h-4 w-4 ${isUploading ? "animate-pulse" : ""}`} />
             {isUploading ? "Uploading..." : "Upload Video"}

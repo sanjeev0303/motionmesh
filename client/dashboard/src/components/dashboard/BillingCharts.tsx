@@ -31,7 +31,7 @@ interface BillingChartsProps {
 const CustomTooltipCost = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-bg-surface border border-border-subtle p-3 rounded-lg shadow-xl text-xs">
+      <div className="bg-surface border border-borderSubtle p-3 rounded-lg shadow-xl text-xs">
         <p className="font-semibold text-text-primary mb-2">{label}</p>
         {payload.map((p: any) => (
           <div key={p.name} className="flex items-center gap-2">
@@ -99,14 +99,14 @@ export function BillingCharts({ subscription }: BillingChartsProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* 14-day cost timeline */}
-      <Card className="lg:col-span-2 bg-bg-surface border-border-subtle">
+      <Card className="lg:col-span-2 bg-surface border-borderSubtle">
         <CardHeader className="pb-2">
           <CardTitle className="text-base font-display text-text-primary">Spend (14 days)</CardTitle>
           <CardDescription className="text-xs">Recorded usage cost over the last 14 days</CardDescription>
         </CardHeader>
         <CardContent>
           {!hasUsage && !isLoading ? (
-            <div className="h-[240px] flex items-center justify-center text-text-muted text-sm border border-dashed border-border-subtle rounded-lg">
+            <div className="h-[240px] flex items-center justify-center text-text-muted text-sm border border-dashed border-borderSubtle rounded-lg">
               No usage recorded yet
             </div>
           ) : (
@@ -148,7 +148,7 @@ export function BillingCharts({ subscription }: BillingChartsProps) {
 
       {/* Right column: month cost + prepaid balance */}
       <div className="space-y-6">
-        <Card className="bg-bg-surface border-border-subtle">
+        <Card className="bg-surface border-borderSubtle">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-display text-text-primary">This Month Cost</CardTitle>
             <CardDescription className="text-xs">Recorded usage this calendar month</CardDescription>
@@ -168,7 +168,7 @@ export function BillingCharts({ subscription }: BillingChartsProps) {
           </CardContent>
         </Card>
 
-        <Card className="bg-bg-surface border-border-subtle">
+        <Card className="bg-surface border-borderSubtle">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-display text-text-primary">Prepaid Balance</CardTitle>
             <CardDescription className="text-xs">Funds available for usage</CardDescription>

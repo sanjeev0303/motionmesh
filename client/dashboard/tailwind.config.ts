@@ -30,25 +30,26 @@ const config = {
     },
     extend: {
       colors: {
-        base: "var(--bg-base)",
+        // Literals (not var() refs) so opacity modifiers compile; keep in sync with globals.css
+        base: "rgb(11 15 23)", // var(--bg-base)
         surface: {
-          DEFAULT: "var(--bg-surface)",
-          raised: "var(--bg-surface-raised)",
+          DEFAULT: "rgb(18 22 31)", // var(--bg-surface)
+          raised: "rgb(26 31 43)", // var(--bg-surface-raised)
         },
         accent: {
-          motion: "var(--accent-motion)",
-          mesh: "var(--accent-mesh)",
+          motion: "rgb(255 138 61)", // var(--accent-motion)
+          mesh: "rgb(77 217 232)", // var(--accent-mesh)
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
         text: {
-          primary: "var(--text-primary)",
-          muted: "var(--text-muted)",
+          primary: "rgb(243 241 236)", // var(--text-primary)
+          muted: "rgb(136 145 160)", // var(--text-muted)
         },
-        borderSubtle: "var(--border-subtle)",
-        success: "var(--success)",
-        warning: "var(--warning)",
-        danger: "var(--danger)",
+        borderSubtle: "rgb(35 40 56)", // var(--border-subtle)
+        success: "rgb(61 220 151)", // var(--success)
+        warning: "rgb(255 194 77)", // var(--warning)
+        danger: "rgb(255 92 92)", // var(--danger)
 
         // shadcn compat
         border: "hsl(var(--border))",

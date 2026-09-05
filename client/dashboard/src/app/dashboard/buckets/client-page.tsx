@@ -91,7 +91,7 @@ export function BucketsClient({ initialBuckets }: BucketsClientProps) {
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-accent-motion text-bg-base hover:bg-accent-motion/90">
+            <Button className="bg-accent-motion text-black hover:bg-accent-motion/90">
               <Plus className="mr-2 h-4 w-4" />
               Create Bucket
             </Button>
@@ -133,7 +133,7 @@ export function BucketsClient({ initialBuckets }: BucketsClientProps) {
               </div>
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={!newBucketName || !newBucketRegion} className="bg-accent-motion text-bg-base hover:bg-accent-motion/90">
+                <Button type="submit" disabled={!newBucketName || !newBucketRegion} className="bg-accent-motion text-black hover:bg-accent-motion/90">
                   Provision Bucket
                 </Button>
               </DialogFooter>
@@ -153,37 +153,37 @@ export function BucketsClient({ initialBuckets }: BucketsClientProps) {
           </Button>
         </div>
       ) : showSkeleton ? (
-        <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+        <div className="rounded-md border border-borderSubtle bg-surface overflow-hidden">
           <Table>
-            <TableHeader className="bg-bg-surface-raised">
-              <TableRow className="border-border-subtle">
-                <TableHead className="w-[250px]"><div className="h-4 bg-bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
-                <TableHead className="w-[120px]"><div className="h-4 bg-bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
-                <TableHead className="w-[100px] text-right"><div className="h-4 bg-bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
-                <TableHead className="min-w-[200px]"><div className="h-4 bg-bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
-                <TableHead className="min-w-[200px]"><div className="h-4 bg-bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
-                <TableHead className="w-[150px] text-right"><div className="h-4 bg-bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
+            <TableHeader className="bg-surface-raised">
+              <TableRow className="border-borderSubtle">
+                <TableHead className="w-[250px]"><div className="h-4 bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
+                <TableHead className="w-[120px]"><div className="h-4 bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
+                <TableHead className="w-[100px] text-right"><div className="h-4 bg-surface-raised/50 rounded w-full animate-pulse" /></TableHead>
+                <TableHead className="min-w-[200px]"><div className="h-4 bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
+                <TableHead className="min-w-[200px]"><div className="h-4 bg-surface-raised/50 rounded w-3/4 animate-pulse" /></TableHead>
+                <TableHead className="w-[150px] text-right"><div className="h-4 bg-surface-raised/50 rounded w-1/2 animate-pulse" /></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {[1, 2, 3].map(i => (
-                <TableRow key={i} className="border-border-subtle">
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-3/4 animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-1/2 animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-1/2 animate-pulse" /></TableCell>
-                  <TableCell><div className="h-4 bg-bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
+                <TableRow key={i} className="border-borderSubtle">
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-3/4 animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-1/2 animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-1/2 animate-pulse" /></TableCell>
+                  <TableCell><div className="h-4 bg-surface-raised/30 rounded w-full animate-pulse" /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       ) : buckets.length > 0 ? (
-        <div className="rounded-md border border-border-subtle bg-bg-surface overflow-hidden">
+        <div className="rounded-md border border-borderSubtle bg-surface overflow-hidden">
           <Table>
-            <TableHeader className="bg-bg-surface-raised">
-              <TableRow className="border-border-subtle hover:bg-transparent">
+            <TableHeader className="bg-surface-raised">
+              <TableRow className="border-borderSubtle hover:bg-transparent">
                 <TableHead className="text-text-muted font-medium w-[250px]">Name</TableHead>
                 <TableHead className="text-text-muted font-medium w-[120px]">Region</TableHead>
                 <TableHead className="text-text-muted font-medium w-[100px] text-right">Objects</TableHead>
@@ -194,7 +194,7 @@ export function BucketsClient({ initialBuckets }: BucketsClientProps) {
             </TableHeader>
             <TableBody>
               {buckets.map((bucket) => (
-                <TableRow key={bucket.id} className="border-border-subtle hover:bg-bg-surface-raised/50 group transition-colors">
+                <TableRow key={bucket.id} className="border-borderSubtle hover:bg-surface-raised/50 group transition-colors">
                   <TableCell className="font-medium text-text-primary">
                     <Link href={`/dashboard/buckets/${bucket.id}`} className="hover:text-accent-motion transition-colors">
                       {bucket.name}
@@ -229,15 +229,15 @@ export function BucketsClient({ initialBuckets }: BucketsClientProps) {
           </Table>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-24 text-center border border-border-subtle border-dashed rounded-lg bg-bg-surface">
-          <div className="h-12 w-12 rounded-full bg-bg-surface-raised flex items-center justify-center mb-4">
+        <div className="flex flex-col items-center justify-center py-24 text-center border border-borderSubtle border-dashed rounded-lg bg-surface">
+          <div className="h-12 w-12 rounded-full bg-surface-raised flex items-center justify-center mb-4">
             <Plus className="h-6 w-6 text-text-muted" />
           </div>
           <h3 className="text-lg font-medium text-text-primary mb-2">No buckets yet</h3>
           <p className="text-text-muted max-w-sm mb-6">
             Create your first bucket to start uploading and transcoding videos.
           </p>
-          <Button className="bg-accent-motion text-bg-base hover:bg-accent-motion/90" onClick={() => setIsCreateOpen(true)}>
+          <Button className="bg-accent-motion text-black hover:bg-accent-motion/90" onClick={() => setIsCreateOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Create Bucket
           </Button>
