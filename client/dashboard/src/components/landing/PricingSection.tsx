@@ -5,9 +5,9 @@ import { CheckCircle2, ArrowRight, Zap, HardDrive, Network, Clock } from "lucide
 import Link from "next/link";
 
 const RATES = {
-  storage:   0.030,
-  egress:    0.015,
-  transcode: 0.006,
+  storage:   0.038,
+  egress:    0.164,
+  transcode: 0.0068,
 };
 
 const PLANS = [
@@ -41,9 +41,9 @@ const PLANS = [
     cta: "Start Building",
     ctaHref: "/signup",
     limits: [
-      { icon: HardDrive, text: "10 GB free → $0.030/GB-month" },
-      { icon: Network,   text: "20 GB free → $0.015/GB egress" },
-      { icon: Zap,       text: "60 min free → $0.006/min SD" },
+      { icon: HardDrive, text: "10 GB free → $0.038/GB-month" },
+      { icon: Network,   text: "20 GB free → $0.164/GB egress" },
+      { icon: Zap,       text: "60 min free → $0.0068/min SD" },
       { icon: Clock,     text: "60 min max video duration" },
     ],
     features: ["Unlimited videos", "3 buckets", "5 API keys", "HD quality", "Email support"],
@@ -61,9 +61,9 @@ const PLANS = [
     cta: "Upgrade to Pro",
     ctaHref: "/signup?plan=pro",
     limits: [
-      { icon: HardDrive, text: "500 GB storage included" },
-      { icon: Network,   text: "200 GB/month egress included" },
-      { icon: Zap,       text: "2,000 transcode min included" },
+      { icon: HardDrive, text: "300 GB storage included" },
+      { icon: Network,   text: "120 GB/month egress included" },
+      { icon: Zap,       text: "1,200 transcode min included" },
       { icon: Clock,     text: "4 hr max video · 10 GB max file" },
     ],
     features: ["Unlimited videos", "10 buckets", "20 API keys", "HD quality", "Priority support", "Custom CNAME"],
@@ -199,7 +199,7 @@ export function PricingSection() {
             Simple, transparent pricing.
           </h2>
           <p className="text-lg max-w-2xl mx-auto" style={{ color: "var(--text-muted)" }}>
-            Start free. Scale as you grow. Prices reflect real AWS infrastructure costs + 30% margin.
+            Start free. Scale as you grow. Prices reflect real AWS infrastructure costs + 50% margin.
           </p>
         </div>
 
@@ -283,17 +283,17 @@ export function PricingSection() {
             <table className="w-full text-sm">
               <thead style={{ borderBottom: "1px solid var(--border-subtle)", background: "rgba(255,255,255,0.04)" }}>
                 <tr>
-                  {["Resource", "AWS Cost", "Our Rate (+30%)"].map((h, i) => (
+                  {["Resource", "AWS Cost", "Our Rate (+50%)"].map((h, i) => (
                     <th key={h} className={`px-6 py-4 text-xs font-medium uppercase tracking-wider ${i === 0 ? "text-left" : "text-right"}`} style={{ color: "var(--text-muted)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { resource: "Storage",        unit: "per GB/month",  aws: "$0.023",       ours: "$0.030" },
-                  { resource: "Egress (CDN)",   unit: "per GB",        aws: "$0.009–0.011", ours: "$0.015" },
-                  { resource: "Transcoding SD", unit: "per minute",    aws: "$0.0045",      ours: "$0.006" },
-                  { resource: "Transcoding HD", unit: "per minute",    aws: "$0.0090",      ours: "$0.012" },
+                  { resource: "Storage",        unit: "per GB/month",  aws: "$0.025",       ours: "$0.038" },
+                  { resource: "Egress (S3 internet)", unit: "per GB",  aws: "$0.109",       ours: "$0.164" },
+                  { resource: "Transcoding SD", unit: "per minute",    aws: "$0.0045",      ours: "$0.0068" },
+                  { resource: "Transcoding HD", unit: "per minute",    aws: "$0.0090",      ours: "$0.0135" },
                 ].map((row, i) => (
                   <tr key={row.resource} style={{ borderTop: i > 0 ? "1px solid var(--border-subtle)" : undefined }}>
                     <td className="px-6 py-4">

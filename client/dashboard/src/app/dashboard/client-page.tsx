@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Video } from "@/lib/types";
 import { motionmesh } from "@motionmesh/sdk";
 import { DashboardCharts } from "@/components/dashboard/DashboardCharts";
+import { BillingCharts } from "@/components/dashboard/BillingCharts";
 
 export default function DashboardClient({
   initialBuckets,
@@ -313,6 +314,7 @@ export default function DashboardClient({
 
       {/* ── Charts ── */}
       <DashboardCharts buckets={serverBuckets ?? []} videos={videos} />
+      <BillingCharts subscription={subscription ?? undefined} />
 
 
       {/* ── Bottom: Recent Videos + Activity + Quick Actions ── */}

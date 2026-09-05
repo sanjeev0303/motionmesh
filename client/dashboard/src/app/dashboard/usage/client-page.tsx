@@ -50,7 +50,7 @@ interface UsageClientProps {
   initialInvoices: UsageEvent[];
 }
 
-const OVERAGE_RATES = { storage: 0.030, egress: 0.015, transcode: 0.006 };
+const OVERAGE_RATES = { storage: 0.038, egress: 0.164, transcode: 0.0068 };
 
 const COST_COLORS: Record<string, string> = {
   storage: "#8B5CF6", egress: "#F59E0B", transcode: "#EC4899", default: "#00F0FF",

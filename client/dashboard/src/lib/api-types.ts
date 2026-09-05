@@ -264,7 +264,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        price_id?: string;
+                        plan?: string;
                         return_url?: string;
                     };
                 };
