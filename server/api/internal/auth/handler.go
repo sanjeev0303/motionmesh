@@ -2,10 +2,12 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/motionmesh/server/shared/models"
+	"github.com/motionmesh/server/shared/pricing"
 )
 
 type Handler struct {
@@ -47,6 +49,26 @@ func (h *Handler) createAPIKey(w http.ResponseWriter, r *http.Request) {
 	if req.Name == "" {
 		http.Error(w, "Name is required", http.StatusBadRequest)
 		return
+	}
+
+	quota := pricing.QuotaForPlan(account.Plan)
+	if quota.MaxAPIKeys > 0 {
+		keys, err := h.service.ListAPIKeys(r.Context(), account.ID)
+		if err != nil {
+			http.Error(w, "Failed to list API keys", http.StatusInternalServerError)
+			return
+		}
+		if len(keys) >= int(quota.MaxAPIKeys) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusPaymentRequired)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "api_key_limit_reached",
+				"plan":    account.Plan,
+				"limit":   quota.MaxAPIKeys,
+				"message": fmt.Sprintf("You have reached the %d API key limit for the %s plan.", quota.MaxAPIKeys, account.Plan),
+			})
+			return
+		}
 	}
 
 	rawKey, key, err := h.service.GenerateAPIKey(r.Context(), account.ID, req.Name)

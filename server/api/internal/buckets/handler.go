@@ -2,6 +2,7 @@ package buckets
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/motionmesh/server/api/internal/auth"
 	"github.com/motionmesh/server/shared/logger"
 	"github.com/motionmesh/server/shared/models"
+	"github.com/motionmesh/server/shared/pricing"
 )
 
 type Handler struct {
@@ -70,6 +72,26 @@ func (h *Handler) createBucket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	bucket.AccountID = account.ID
+
+	quota := pricing.QuotaForPlan(account.Plan)
+	if quota.MaxBuckets > 0 {
+		existing, err := h.service.ListBuckets(r.Context(), account.ID)
+		if err != nil {
+			http.Error(w, "Failed to list buckets", http.StatusInternalServerError)
+			return
+		}
+		if len(existing) >= int(quota.MaxBuckets) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusPaymentRequired)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "bucket_limit_reached",
+				"plan":    account.Plan,
+				"limit":   quota.MaxBuckets,
+				"message": fmt.Sprintf("You have reached the %d bucket limit for the %s plan.", quota.MaxBuckets, account.Plan),
+			})
+			return
+		}
+	}
 
 	if err := h.service.CreateBucket(r.Context(), &bucket); err != nil {
 		http.Error(w, "Failed to create bucket", http.StatusInternalServerError)
