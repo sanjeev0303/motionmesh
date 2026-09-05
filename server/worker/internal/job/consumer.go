@@ -28,6 +28,7 @@ type TranscodeJobMessage struct {
 	VideoID           string  `json:"video_id"`
 	SourceObjectKey   string  `json:"source_object_key"`
 	TranscodeBucketID *string `json:"transcode_bucket_id,omitempty"`
+	MaxDurationSec    int64   `json:"max_duration_sec,omitempty"`
 }
 
 // jobTimeout is the hard deadline for one transcode job.
@@ -130,7 +131,7 @@ func (c *Consumer) handleMessage(ctx context.Context, msg *nats.Msg) {
 		}
 	}()
 
-	err := c.handler.Process(jobCtx, payload.VideoID, payload.SourceObjectKey, payload.TranscodeBucketID)
+	err := c.handler.Process(jobCtx, payload.VideoID, payload.SourceObjectKey, payload.TranscodeBucketID, payload.MaxDurationSec)
 	close(heartbeatDone)
 
 	if err != nil {

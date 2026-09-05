@@ -49,7 +49,7 @@ func NewHandler(db *sql.DB, store storage.ObjectStorage, up *uploader.Uploader, 
 	}
 }
 
-func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey string, transcodeBucketID *string) error {
+func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey string, transcodeBucketID *string, maxDurationSec int64) error {
 	defer func() {
 		var vStatus, cStatus sql.NullString
 		err := h.db.QueryRow("SELECT status, captions_status FROM videos WHERE id = $1::uuid", videoID).Scan(&vStatus, &cStatus)
@@ -162,6 +162,11 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 		if err := pg.Wait(); err != nil {
 			return h.failJob(ctx, videoID, fmt.Errorf("probe/account/idempotency: %w", err))
 		}
+	}
+
+	// maxDurationSec == 0 (legacy jobs published before this field) means no limit.
+	if maxDurationSec > 0 && probeRes.Duration > float64(maxDurationSec) {
+		return h.failJob(ctx, videoID, fmt.Errorf("video duration %.0fs exceeds the %ds maximum for this plan", probeRes.Duration, maxDurationSec))
 	}
 
 	// 4. ABR Ladder
