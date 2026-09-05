@@ -8,56 +8,12 @@ import (
 	"github.com/motionmesh/server/api/internal/auth"
 	"github.com/motionmesh/server/shared/logger"
 	"github.com/motionmesh/server/shared/models"
+	"github.com/motionmesh/server/shared/pricing"
 )
 
 // PlanLimits defines hard limits per plan for real-time enforcement.
-// These are checked on every upload / transcode / bucket create request.
-var PlanLimits = map[string]models.PlanQuota{
-	"free": {
-		StorageBytes:       5 * 1024 * 1024 * 1024,        // 5 GB
-		EgressBytes:        10 * 1024 * 1024 * 1024,       // 10 GB/month
-		TranscodeMinutes:   30,                             // 30 minutes/month
-		MaxVideos:          20,
-		MaxBuckets:         1,
-		MaxAPIKeys:         2,
-		MaxVideoSizeMB:     200,                            // 200 MB per video
-		MaxVideoDurationSec: 300,                           // 5 min per video (SD only)
-		TranscodeQuality:   "sd",
-	},
-	"starter": { // pay-as-you-go — soft limits, billed beyond free tier
-		StorageBytes:       10 * 1024 * 1024 * 1024,       // 10 GB free, then metered
-		EgressBytes:        20 * 1024 * 1024 * 1024,       // 20 GB free
-		TranscodeMinutes:   60,                             // 60 min free, then metered
-		MaxVideos:          -1,                             // unlimited
-		MaxBuckets:         3,
-		MaxAPIKeys:         5,
-		MaxVideoSizeMB:     2048,                           // 2 GB per video
-		MaxVideoDurationSec: 3600,                          // 60 min
-		TranscodeQuality:   "hd",
-	},
-	"pro": {
-		StorageBytes:       500 * 1024 * 1024 * 1024,      // 500 GB included
-		EgressBytes:        200 * 1024 * 1024 * 1024,      // 200 GB/month included
-		TranscodeMinutes:   2000,                           // 2,000 min included
-		MaxVideos:          -1,                             // unlimited
-		MaxBuckets:         10,
-		MaxAPIKeys:         20,
-		MaxVideoSizeMB:     10240,                          // 10 GB per video
-		MaxVideoDurationSec: 14400,                         // 4 hours
-		TranscodeQuality:   "hd",
-	},
-	"enterprise": {
-		StorageBytes:       -1, // unlimited
-		EgressBytes:        -1,
-		TranscodeMinutes:   -1,
-		MaxVideos:          -1,
-		MaxBuckets:         -1,
-		MaxAPIKeys:         -1,
-		MaxVideoSizeMB:     -1,
-		MaxVideoDurationSec: -1,
-		TranscodeQuality:   "hd",
-	},
-}
+// Single source of truth: server/shared/pricing (formerly duplicated here).
+var PlanLimits = pricing.PlanQuotas
 
 type PlanChecker interface {
 	GetAccountPlan(ctx context.Context, accountID string) (string, error)

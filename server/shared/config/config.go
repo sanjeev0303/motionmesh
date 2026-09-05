@@ -25,6 +25,7 @@ type Config struct {
 	// Billing
 	StripeSecretKey     string
 	StripeWebhookSecret string
+	ProPriceID          string // Stripe Price ID for the Pro plan ($29/mo)
 
 	// Worker / Sidecar
 	CaptionsSidecarURL string
@@ -72,6 +73,7 @@ func Load() *Config {
 
 		StripeSecretKey:     getEnv("STRIPE_SECRET_KEY", ""),
 		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
+		ProPriceID:          getEnv("STRIPE_PRO_PRICE_ID", ""),
 
 		CaptionsSidecarURL: getEnv("CAPTIONS_SIDECAR_URL", "http://localhost:8000"),
 		HuggingfaceAPIKey:  getEnv("HUGGINGFACE_API_KEY", ""),

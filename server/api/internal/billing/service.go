@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/motionmesh/server/shared/logger"
@@ -30,14 +31,16 @@ type Service struct {
 	rdb            *redis.Client
 	webhookSecret  string
 	meterEventName string // Stripe Meter name (e.g. "api_requests")
+	proPriceID     string
 }
 
-func NewService(repo BillingRepository, rdb *redis.Client, stripeSecretKey, webhookSecret string) *Service {
+func NewService(repo BillingRepository, rdb *redis.Client, stripeSecretKey, webhookSecret, proPriceID string) *Service {
 	stripe.Key = stripeSecretKey
 	return &Service{
 		repo:          repo,
 		rdb:           rdb,
 		webhookSecret: webhookSecret,
+		proPriceID:    proPriceID,
 	}
 }
 
@@ -63,6 +66,45 @@ func (s *Service) ReportUsage(ctx context.Context, accountID, eventType string, 
 		},
 	}
 	_, err := meterevent.New(params)
+	return err
+}
+
+// RecordEgress attributes streamed bytes to an account (bandwidth_bytes).
+// The DB write is authoritative; the Stripe meter event is best-effort so a
+// third-party failure never blocks or fails a streaming response.
+func (s *Service) RecordEgress(ctx context.Context, accountID string, bytes int64) error {
+	if bytes <= 0 {
+		return nil
+	}
+	acc, err := s.repo.GetAccountByID(ctx, accountID)
+	if err != nil {
+		return fmt.Errorf("billing: lookup account for egress: %w", err)
+	}
+	if acc == nil {
+		return nil
+	}
+
+	event := &models.UsageEvent{
+		AccountID: accountID,
+		EventType: "bandwidth_bytes",
+		Quantity:  bytes,
+		CreatedAt: time.Now(),
+	}
+	if err := s.repo.RecordUsageEvent(ctx, event); err != nil {
+		return fmt.Errorf("billing: record egress event: %w", err)
+	}
+
+	if acc.StripeCustomerID == nil || *acc.StripeCustomerID == "" {
+		return nil
+	}
+	params := &stripe.BillingMeterEventParams{
+		EventName: stripe.String("bandwidth_bytes"),
+		Payload: map[string]string{
+			"stripe_customer_id": *acc.StripeCustomerID,
+			"value":              fmt.Sprintf("%d", bytes),
+		},
+	}
+	_, err = meterevent.New(params)
 	return err
 }
 
@@ -181,9 +223,9 @@ func (s *Service) HandleWebhook(ctx context.Context, payload []byte, sigHeader s
 		plan := "free"
 		status := "active"
 		if sub.Status == stripe.SubscriptionStatusActive {
-			// Determine plan from the price metadata or product name.
+			// Determine plan from the price nickname, normalizing to a canonical plan name.
 			if len(sub.Items.Data) > 0 && sub.Items.Data[0].Price != nil {
-				plan = sub.Items.Data[0].Price.Nickname
+				plan = canonicalPlan(sub.Items.Data[0].Price.Nickname)
 			}
 		}
 		if sub.Status == stripe.SubscriptionStatusPastDue || sub.Status == stripe.SubscriptionStatusUnpaid {
@@ -341,8 +383,15 @@ func (s *Service) CreatePortalSession(ctx context.Context, account *models.Accou
 	return sess.URL, nil
 }
 
-// CreateCheckoutSession creates a Stripe Checkout session for a new subscription.
-func (s *Service) CreateCheckoutSession(ctx context.Context, account *models.Account, priceID, returnURL string) (string, error) {
+// CreateCheckoutSession creates a Stripe Checkout session for a subscription.
+// The client asks for a plan (e.g. "pro"); the server resolves the Price ID so
+// a caller can never pin an arbitrary Stripe price to their account.
+func (s *Service) CreateCheckoutSession(ctx context.Context, account *models.Account, plan, returnURL string) (string, error) {
+	priceID := s.priceIDForPlan(plan)
+	if priceID == "" {
+		return "", fmt.Errorf("billing: plan %q is not offered for checkout", plan)
+	}
+
 	var customerID string
 	if account.StripeCustomerID != nil {
 		customerID = *account.StripeCustomerID
@@ -381,6 +430,33 @@ func (s *Service) CreateCheckoutSession(ctx context.Context, account *models.Acc
 		return "", err
 	}
 	return sess.URL, nil
+}
+
+// priceIDForPlan resolves a user-facing plan to its Stripe Price ID.
+// Free is not purchasable; only serverside-configured plans are offered.
+func (s *Service) priceIDForPlan(plan string) string {
+	switch plan {
+	case "pro":
+		return s.proPriceID
+	default:
+		return ""
+	}
+}
+
+// canonicalPlan lowercases and normalizes a Stripe Price nickname to a
+// canonical plan name (free/starter/pro/enterprise), defaulting to free.
+func canonicalPlan(nickname string) string {
+	n := strings.ToLower(strings.TrimSpace(nickname))
+	switch {
+	case strings.Contains(n, "pro"):
+		return "pro"
+	case strings.Contains(n, "enterprise"):
+		return "enterprise"
+	case strings.Contains(n, "starter"):
+		return "starter"
+	default:
+		return "free"
+	}
 }
 
 type usageEvent struct {

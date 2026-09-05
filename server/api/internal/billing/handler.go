@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/motionmesh/server/api/internal/auth"
 	"github.com/motionmesh/server/shared/models"
+	"github.com/motionmesh/server/shared/pricing"
 )
 
 type Handler struct {
@@ -84,8 +85,8 @@ func (h *Handler) getSubscription(w http.ResponseWriter, r *http.Request) {
 	egressUsedBytes, _ := h.service.GetAggregatedUsage(r.Context(), account.ID, "bandwidth_bytes")
 	transcodeSeconds, _ := h.service.GetAggregatedUsage(r.Context(), account.ID, "video_transcode_seconds")
 
-	// Resolve plan limits dynamically from middleware.PlanLimits
-	quota := planLimits(account.Plan)
+	// Resolve plan limits dynamically from pricing (single source of truth)
+	quota := pricing.QuotaForPlan(account.Plan)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -107,59 +108,22 @@ func (h *Handler) getSubscription(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// planLimits returns hard limits for a plan tier. Mirrors middleware.PlanLimits.
-func planLimits(plan string) models.PlanQuota {
-	limits := map[string]models.PlanQuota{
-		"free": {
-			StorageBytes: 5 * 1024 * 1024 * 1024, EgressBytes: 10 * 1024 * 1024 * 1024,
-			TranscodeMinutes: 30, MaxVideos: 20, MaxBuckets: 1, MaxAPIKeys: 2,
-			MaxVideoSizeMB: 200, MaxVideoDurationSec: 300, TranscodeQuality: "sd",
-		},
-		"starter": {
-			StorageBytes: 10 * 1024 * 1024 * 1024, EgressBytes: 20 * 1024 * 1024 * 1024,
-			TranscodeMinutes: 60, MaxVideos: -1, MaxBuckets: 3, MaxAPIKeys: 5,
-			MaxVideoSizeMB: 2048, MaxVideoDurationSec: 3600, TranscodeQuality: "hd",
-		},
-		"pro": {
-			StorageBytes: 500 * 1024 * 1024 * 1024, EgressBytes: 200 * 1024 * 1024 * 1024,
-			TranscodeMinutes: 2000, MaxVideos: -1, MaxBuckets: 10, MaxAPIKeys: 20,
-			MaxVideoSizeMB: 10240, MaxVideoDurationSec: 14400, TranscodeQuality: "hd",
-		},
-		"enterprise": {
-			StorageBytes: -1, EgressBytes: -1, TranscodeMinutes: -1,
-			MaxVideos: -1, MaxBuckets: -1, MaxAPIKeys: -1,
-			MaxVideoSizeMB: -1, MaxVideoDurationSec: -1, TranscodeQuality: "hd",
-		},
-	}
-	if q, ok := limits[plan]; ok {
-		return q
-	}
-	return limits["free"]
-}
-
-// Billing rates (AWS cost + 30% margin, stored in cents per unit)
-const (
-	rateStoragePerGBMonthCents  = 3.0   // $0.030
-	rateEgressPerGBCents        = 1.5   // $0.015
-	rateTranscodeSDPerMinCents  = 0.6   // $0.006
-	rateTranscodeHDPerMinCents  = 1.2   // $0.012
-)
-
 // computeEventCost calculates the USD cost for a usage event.
 func computeEventCost(eventType string, quantity int64, quality string) float64 {
+	rates := pricing.Default
 	switch eventType {
 	case "storage_bytes":
 		gb := float64(quantity) / (1024 * 1024 * 1024)
-		return gb * rateStoragePerGBMonthCents / 100.0
+		return gb * rates.StoragePerGBMonth
 	case "bandwidth_bytes":
 		gb := float64(quantity) / (1024 * 1024 * 1024)
-		return gb * rateEgressPerGBCents / 100.0
+		return gb * rates.EgressPerGB
 	case "video_transcode_seconds":
 		minutes := float64(quantity) / 60.0
 		if quality == "hd" {
-			return minutes * rateTranscodeHDPerMinCents / 100.0
+			return minutes * rates.TranscodeHDPerMin
 		}
-		return minutes * rateTranscodeSDPerMinCents / 100.0
+		return minutes * rates.TranscodeSDPerMin
 	}
 	return 0
 }
@@ -177,7 +141,7 @@ func (h *Handler) getUsageEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quality := planLimits(account.Plan).TranscodeQuality
+	quality := pricing.QuotaForPlan(account.Plan).TranscodeQuality
 
 	type usageResponse struct {
 		ID       string  `json:"id"`
@@ -262,15 +226,19 @@ func (h *Handler) createCheckoutSession(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var req struct {
-		PriceID   string `json:"price_id"`
+		Plan      string `json:"plan"`
 		ReturnURL string `json:"return_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	if req.Plan == "" {
+		http.Error(w, "plan is required", http.StatusBadRequest)
+		return
+	}
 
-	url, err := h.service.CreateCheckoutSession(r.Context(), account, req.PriceID, req.ReturnURL)
+	url, err := h.service.CreateCheckoutSession(r.Context(), account, req.Plan, req.ReturnURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
