@@ -5,11 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -18,19 +20,28 @@ import (
 	"github.com/motionmesh/server/api/internal/transcode"
 	"github.com/motionmesh/server/shared/logger"
 	"github.com/motionmesh/server/shared/models"
+	"github.com/motionmesh/server/shared/pricing"
 	"github.com/motionmesh/server/shared/storage"
 )
+
+// UsageResolver supplies usage counters for plan enforcement (satisfied by billing.Service).
+type UsageResolver interface {
+	GetStorageUsage(ctx context.Context, accountID string) (int64, error)
+	GetAggregatedUsage(ctx context.Context, accountID, eventType string) (int64, error)
+	RecordEgress(ctx context.Context, accountID string, bytes int64) error
+}
 
 type Handler struct {
 	svc          *Service
 	storage      storage.ObjectStorage
 	transcodeSvc *transcode.Service
 	bucketSvc    *buckets.Service
+	usage        UsageResolver
 	bucketID     string
 }
 
-func NewHandler(svc *Service, storage storage.ObjectStorage, transcodeSvc *transcode.Service, bucketSvc *buckets.Service, bucketID string) *Handler {
-	return &Handler{svc: svc, storage: storage, transcodeSvc: transcodeSvc, bucketSvc: bucketSvc, bucketID: bucketID}
+func NewHandler(svc *Service, storage storage.ObjectStorage, transcodeSvc *transcode.Service, bucketSvc *buckets.Service, usage UsageResolver, bucketID string) *Handler {
+	return &Handler{svc: svc, storage: storage, transcodeSvc: transcodeSvc, bucketSvc: bucketSvc, usage: usage, bucketID: bucketID}
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
@@ -185,7 +196,23 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 	}
 
 	// ── Quota enforcement ──────────────────────────────────────────────────────
-	quota := quotaForPlan(acc.Plan)
+	quota := pricing.QuotaForPlan(acc.Plan)
+
+	// 0. Storage usage limit (cumulative across buckets)
+	if quota.StorageBytes > 0 && h.usage != nil {
+		used, err := h.usage.GetStorageUsage(r.Context(), acc.ID)
+		if err == nil && used >= quota.StorageBytes {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusPaymentRequired)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "storage_limit_reached",
+				"plan":    acc.Plan,
+				"limit":   quota.StorageBytes,
+				"message": fmt.Sprintf("You have reached the %d GB storage limit for the %s plan.", quota.StorageBytes/(1024*1024*1024), acc.Plan),
+			})
+			return
+		}
+	}
 
 	// 1. File size limit
 	if quota.MaxVideoSizeMB > 0 {
@@ -319,20 +346,6 @@ func (h *Handler) HandleUploadInitiation(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// quotaForPlan mirrors middleware.PlanLimits for use inside the videos handler.
-func quotaForPlan(plan string) models.PlanQuota {
-	limits := map[string]models.PlanQuota{
-		"free":       {StorageBytes: 5 << 30, TranscodeMinutes: 30, MaxVideos: 20, MaxVideoSizeMB: 200, MaxVideoDurationSec: 300},
-		"starter":    {StorageBytes: 10 << 30, TranscodeMinutes: 60, MaxVideos: -1, MaxVideoSizeMB: 2048, MaxVideoDurationSec: 3600},
-		"pro":        {StorageBytes: 500 << 30, TranscodeMinutes: 2000, MaxVideos: -1, MaxVideoSizeMB: 10240, MaxVideoDurationSec: 14400},
-		"enterprise": {StorageBytes: -1, TranscodeMinutes: -1, MaxVideos: -1, MaxVideoSizeMB: -1, MaxVideoDurationSec: -1},
-	}
-	if q, ok := limits[plan]; ok {
-		return q
-	}
-	return limits["free"]
-}
-
 func (h *Handler) HandleProxyUpload(w http.ResponseWriter, r *http.Request) {
 	acc, ok := r.Context().Value(auth.AccountContextKey).(*models.Account)
 	if !ok || acc == nil {
@@ -383,7 +396,8 @@ func (h *Handler) HandleProxyUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Trigger transcode now that the file is in storage
-	if err := h.transcodeSvc.TriggerJob(r.Context(), video); err != nil {
+	quota := pricing.QuotaForPlan(acc.Plan)
+	if err := h.transcodeSvc.TriggerJob(r.Context(), video, int64(quota.MaxVideoDurationSec)); err != nil {
 		logger.New().Error("trigger transcode job: %v", err)
 	}
 
@@ -420,7 +434,8 @@ func (h *Handler) HandleFinalizeUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Trigger transcode now that the file is in storage
-	if err := h.transcodeSvc.TriggerJob(r.Context(), video); err != nil {
+	quota := pricing.QuotaForPlan(acc.Plan)
+	if err := h.transcodeSvc.TriggerJob(r.Context(), video, int64(quota.MaxVideoDurationSec)); err != nil {
 		logger.New().Error("trigger transcode job: %v", err)
 	}
 
@@ -482,7 +497,24 @@ func (h *Handler) HandleCreateTranscodeJob(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := h.transcodeSvc.TriggerJob(ctx, video); err != nil {
+	// Transcode minutes used this month must stay under the plan allowance.
+	quota := pricing.QuotaForPlan(acc.Plan)
+	if quota.TranscodeMinutes > 0 && h.usage != nil {
+		usedSeconds, err := h.usage.GetAggregatedUsage(ctx, acc.ID, "video_transcode_seconds")
+		if err == nil && usedSeconds/60 >= quota.TranscodeMinutes {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusPaymentRequired)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error":   "transcode_limit_reached",
+				"plan":    acc.Plan,
+				"limit":   quota.TranscodeMinutes,
+				"message": fmt.Sprintf("You have reached the %d transcode minute limit for the %s plan.", quota.TranscodeMinutes, acc.Plan),
+			})
+			return
+		}
+	}
+
+	if err := h.transcodeSvc.TriggerJob(ctx, video, int64(quota.MaxVideoDurationSec)); err != nil {
 		logger.New().Error("trigger transcode job: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -594,16 +626,18 @@ func (h *Handler) HandleHLSProxy(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
 		w.Header().Set("Cache-Control", "public, max-age=3600")
+		cw := &counterWriter{w: w}
 		buf := make([]byte, 32*1024)
 		for {
 			n, err := body.Read(buf)
 			if n > 0 {
-				_, _ = w.Write(buf[:n])
+				_, _ = cw.Write(buf[:n])
 			}
 			if err != nil {
 				break
 			}
 		}
+		h.recordEgressAsync(video.AccountID, cw.n)
 		return
 	}
 
@@ -681,18 +715,46 @@ func (h *Handler) HandleHLSProxy(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
 
+	cw := &counterWriter{w: w}
 	buf := make([]byte, 32*1024)
 	for {
 		n, err := body.Read(buf)
 		if n > 0 {
-			_, _ = w.Write(buf[:n])
+			_, _ = cw.Write(buf[:n])
 		}
 		if err != nil {
 			break
 		}
 	}
+	h.recordEgressAsync(video.AccountID, cw.n)
 }
 
+
+// counterWriter tallies payload bytes written to the response for egress metering.
+type counterWriter struct {
+	w io.Writer
+	n int64
+}
+
+func (c *counterWriter) Write(p []byte) (int, error) {
+	n, err := c.w.Write(p)
+	c.n += int64(n)
+	return n, err
+}
+
+// recordEgressAsync attributes streamed bytes without blocking the playout path.
+func (h *Handler) recordEgressAsync(accountID string, bytes int64) {
+	if h.usage == nil || bytes <= 0 || accountID == "" {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := h.usage.RecordEgress(ctx, accountID, bytes); err != nil {
+			logger.New().Error("record egress usage: %v", err)
+		}
+	}()
+}
 
 func getProxyBaseURL(r *http.Request) string {
 	if pub := os.Getenv("PUBLIC_API_URL"); pub != "" {
@@ -839,7 +901,7 @@ func (h *Handler) HandleMultipartComplete(w http.ResponseWriter, r *http.Request
 		SizeBytes:   int64(video.SizeBytes),
 		ContentType: "video/mp4",
 	}})
-	if err := h.transcodeSvc.TriggerJob(r.Context(), video); err != nil {
+	if err := h.transcodeSvc.TriggerJob(r.Context(), video, int64(pricing.QuotaForPlan(acc.Plan).MaxVideoDurationSec)); err != nil {
 		logger.New().Error("trigger transcode after multipart: %v", err)
 	}
 	w.Header().Set("Content-Type", "application/json")

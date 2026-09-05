@@ -109,7 +109,7 @@ func main() {
 
 	// ── Billing ───────────────────────────────────────────────────────────────
 	var billingRepo billing.BillingRepository = billingpostgres.NewRepository(db)
-	billingSvc := billing.NewService(billingRepo, rdb, cfg.StripeSecretKey, cfg.StripeWebhookSecret)
+	billingSvc := billing.NewService(billingRepo, rdb, cfg.StripeSecretKey, cfg.StripeWebhookSecret, cfg.ProPriceID)
 	go func() { if err := billingSvc.ConsumeUsageEvents(ctx, nc, log); err != nil { log.Error("ConsumeUsageEvents failed: %v", err) } }()
 
 	// ── Auth last-used flush ───────────────────────────────────────────────────
@@ -174,7 +174,7 @@ func main() {
 
 		// Videos — all routes; quota is enforced inside HandleUploadInitiation
 		r.Route("/v1/videos", func(r chi.Router) {
-			videosHandler := videos.NewHandler(videosSvc, storageAdapter, transcodeSvc, bucketSvc, cfg.StorageBucket)
+			videosHandler := videos.NewHandler(videosSvc, storageAdapter, transcodeSvc, bucketSvc, billingSvc, cfg.StorageBucket)
 			videosHandler.RegisterRoutes(r)
 		})
 

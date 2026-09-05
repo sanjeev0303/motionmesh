@@ -25,10 +25,11 @@ type TranscodeJobMessage struct {
 	VideoID           string  `json:"video_id"`
 	SourceObjectKey   string  `json:"source_object_key"`
 	TranscodeBucketID *string `json:"transcode_bucket_id,omitempty"`
+	MaxDurationSec    int64   `json:"max_duration_sec,omitempty"`
 }
 
 // TriggerJob creates a job in the database and publishes a message to NATS.
-func (s *Service) TriggerJob(ctx context.Context, video *models.Video) error {
+func (s *Service) TriggerJob(ctx context.Context, video *models.Video, maxDurationSec int64) error {
 	// 1. Create job in postgres idempotently
 	var jobID string
 	err := s.db.QueryRow(ctx,
@@ -64,6 +65,7 @@ func (s *Service) TriggerJob(ctx context.Context, video *models.Video) error {
 		VideoID:           video.ID,
 		SourceObjectKey:   video.ObjectKey,
 		TranscodeBucketID: video.TranscodeBucketID,
+		MaxDurationSec:    maxDurationSec,
 	}
 	payload, err := json.Marshal(msg)
 	if err != nil {
