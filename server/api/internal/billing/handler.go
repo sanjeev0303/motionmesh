@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/motionmesh/server/api/internal/auth"
+	"github.com/motionmesh/server/shared/logger"
 	"github.com/motionmesh/server/shared/models"
 	"github.com/motionmesh/server/shared/pricing"
 )
@@ -81,9 +82,24 @@ func (h *Handler) getSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch usage metrics
-	storageUsedBytes, _ := h.service.GetStorageUsage(r.Context(), account.ID)
-	egressUsedBytes, _ := h.service.GetAggregatedUsage(r.Context(), account.ID, "bandwidth_bytes")
-	transcodeSeconds, _ := h.service.GetAggregatedUsage(r.Context(), account.ID, "video_transcode_seconds")
+	storageUsedBytes, err := h.service.GetStorageUsage(r.Context(), account.ID)
+	if err != nil {
+		logger.New().Error("get storage usage: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	egressUsedBytes, err := h.service.GetAggregatedUsage(r.Context(), account.ID, "bandwidth_bytes")
+	if err != nil {
+		logger.New().Error("get egress usage: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	transcodeSeconds, err := h.service.GetAggregatedUsage(r.Context(), account.ID, "video_transcode_seconds")
+	if err != nil {
+		logger.New().Error("get transcode usage: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	// Resolve plan limits dynamically from pricing (single source of truth)
 	quota := pricing.QuotaForPlan(account.Plan)

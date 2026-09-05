@@ -501,7 +501,9 @@ func (h *Handler) HandleCreateTranscodeJob(w http.ResponseWriter, r *http.Reques
 	quota := pricing.QuotaForPlan(acc.Plan)
 	if quota.TranscodeMinutes > 0 && h.usage != nil {
 		usedSeconds, err := h.usage.GetAggregatedUsage(ctx, acc.ID, "video_transcode_seconds")
-		if err == nil && usedSeconds/60 >= quota.TranscodeMinutes {
+		if err != nil {
+			logger.New().Error("get transcode usage for quota: %v", err)
+		} else if usedSeconds/60 >= quota.TranscodeMinutes {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusPaymentRequired)
 			json.NewEncoder(w).Encode(map[string]interface{}{
