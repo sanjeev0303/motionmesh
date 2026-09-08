@@ -15,7 +15,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useApi } from "@/lib/api-client";
 import { Video } from "@/lib/types";
 import { motionmesh } from "@motionmesh/sdk";
-import { MotionmeshPlayer } from "@motionmesh/player/react";
+import { VideoPlayer } from "@/components/dashboard/VideoPlayer";
 
 export default function VideoDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -175,7 +175,23 @@ export default function VideoDetailPage({ params }: { params: { id: string } }) 
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-xl overflow-hidden border border-borderSubtle bg-base shadow-lg relative aspect-video group">
             {video.status === "ready" ? (
-              <MotionmeshPlayer videoTrackingId={video.id} />
+              playbackInfo ? (
+                <VideoPlayer
+                  src={playbackInfo.playlistUrl}
+                  subtitleUrl={playbackInfo.subtitleUrl}
+                  className="absolute inset-0 h-full w-full"
+                />
+              ) : isPlaybackInfoLoading ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface">
+                  <Loader2 className="h-10 w-10 animate-spin text-accent-motion" />
+                </div>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface text-center p-6">
+                  <AlertCircle className="w-10 h-10 text-danger mb-4" />
+                  <h3 className="text-text-primary font-medium mb-2">Playback Unavailable</h3>
+                  <p className="text-text-muted text-sm max-w-md">Failed to load playback information for this video.</p>
+                </div>
+              )
             ) : video.status === "failed" ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface text-center p-6">
                 <AlertCircle className="w-10 h-10 text-danger mb-4" />

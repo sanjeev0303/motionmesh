@@ -21,7 +21,7 @@
     <a href="https://discord.gg/motionmesh">Discord</a> •
     <a href="https://github.com/sanjeev0303/motionmesh/discussions">Discussions</a> •
     <a href="https://www.npmjs.com/package/@motionmesh/sdk">@motionmesh/sdk</a> •
-    <a href="https://www.npmjs.com/package/@motionmesh/player">@motionmesh/player</a> •
+    <a href="https://www.npmjs.com/package/@motionmesh/storage">@motionmesh/storage</a> •
     <a href="https://pypi.org/project/motionmesh/">PyPI</a>
   </p>
 
@@ -101,7 +101,7 @@ graph TD
   <table>
     <tr>
       <td align="center"><strong>JavaScript SDK</strong><br><a href="https://www.npmjs.com/package/@motionmesh/sdk">@motionmesh/sdk</a></td>
-      <td align="center"><strong>Player SDK</strong><br><a href="https://www.npmjs.com/package/@motionmesh/player">@motionmesh/player</a></td>
+      <td align="center"><strong>Storage SDK</strong><br><a href="https://www.npmjs.com/package/@motionmesh/storage">@motionmesh/storage</a></td>
       <td align="center"><strong>Python SDK</strong><br><a href="https://pypi.org/project/motionmesh/">motionmesh</a></td>
     </tr>
     <tr>
@@ -125,16 +125,16 @@ Install the Motionmesh SDKs using your preferred package manager:
 
 ```bash
 # npm
-npm install @motionmesh/sdk @motionmesh/player
+npm install @motionmesh/sdk @motionmesh/storage
 
 # pnpm
-pnpm add @motionmesh/sdk @motionmesh/player
+pnpm add @motionmesh/sdk @motionmesh/storage
 
 # yarn
-yarn add @motionmesh/sdk @motionmesh/player
+yarn add @motionmesh/sdk @motionmesh/storage
 
 # bun
-bun add @motionmesh/sdk @motionmesh/player
+bun add @motionmesh/sdk @motionmesh/storage
 
 # Python
 pip install motionmesh
@@ -180,16 +180,29 @@ video = client.videos.upload("input.mp4", bucket_id="...")
 playback_url = client.videos.get_playback_url(video.id)
 ```
 
-### React Player
+### HLS Playback
+
+Play back HLS renditions with `hls.js` or the native HTML5 video element:
 
 ```tsx
-import { MotionmeshPlayer } from "@motionmesh/player";
-import "@motionmesh/player/styles.css";
+import Hls from "hls.js";
 
 export default function VideoPage() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    let hls: Hls | null = null;
+    if (Hls.isSupported()) {
+      hls = new Hls();
+      hls.loadSource("https://api.yourdomain.com/v1/videos/vid_123/hls/master.m3u8");
+      hls.attachMedia(videoRef.current!);
+    }
+    return () => hls?.destroy();
+  }, []);
+
   return (
     <div className="video-container">
-      <MotionmeshPlayer src="https://api.yourdomain.com/v1/videos/vid_123/hls/master.m3u8" />
+      <video ref={videoRef} controls playsInline />
     </div>
   );
 }
@@ -206,7 +219,7 @@ Motionmesh handles the entire video lifecycle, from ingestion to analytics.
 1. **Upload:** Securely upload source media directly to your S3 bucket.
 2. **Transcode:** Our worker fleet spins up FFmpeg to generate HLS/CMAF ladders, AI captions, and thumbnails.
 3. **Playback:** HLS streams are served directly from storage via secure URLs.
-4. **Player:** The `@motionmesh/player` handles seamless Adaptive Bitrate (ABR) streaming.
+4. **Player:** HLS renditions are played back with `hls.js` or the native HTML5 video element for seamless Adaptive Bitrate (ABR) streaming.
 5. **Analytics:** The player reports telemetry back to the dashboard.
 
 ---
@@ -252,15 +265,12 @@ Our SDK simplifies complex video workflows.
 
 ## 13. Player
 
-The `@motionmesh/player` is a drop-in React component built on top of Vidstack, providing a premium viewing experience out of the box.
+Motionmesh delivers HLS renditions that play in any HLS-capable player — no separate player package is required.
 
-- **ABR (Adaptive Bitrate):** Automatic resolution switching based on network conditions.
-- **Vidstack Core:** Built on robust, accessible video primitives.
-- **Captions & Subtitles:** Native support for VTT and multiple languages.
-- **Quality Switching:** Manual override controls for viewers.
-- **Picture in Picture (PiP):** Floating video support.
-- **Fullscreen:** Native fullscreen API integration.
-- **Keyboard Shortcuts:** Standard media controls (Space, Arrow keys, M, F).
+- **HLS Output:** ABR ladders served via the playback endpoint (`GET /v1/videos/{id}/playback` returns the playlist URL).
+- **hls.js:** Drop-in for all browsers with MSE support.
+- **Native HTML5 video:** Safari and iOS play HLS natively — no JavaScript needed.
+- **Captions & Subtitles:** Generated WebVTT files attach as `<track>` elements.
 
 ---
 
@@ -304,7 +314,7 @@ motionmesh/
 │       ├── src/     # Dashboard & landing page (Next.js App Router)
 │       └── content/docs/  # Fumadocs documentation site
 ├── sdk/             # Client libraries
-│   ├── js/          # @motionmesh/sdk and @motionmesh/player
+│   ├── js/          # @motionmesh/sdk and @motionmesh/storage
 │   └── python/      # motionmesh (PyPI)
 └── infra/           # Terraform and Kubernetes manifests
 ```
@@ -428,7 +438,7 @@ Dive deeper into the platform:
 
 - [x] S3-Compatible Storage Integration
 - [x] Node.js / TypeScript SDK
-- [x] React Player (@motionmesh/player)
+- [x] HLS Playback (hls.js / native `<video>`)
 - [x] Next.js Dashboard
 - [x] Python SDK
 - [x] AI Captions, Transcripts & Chapters

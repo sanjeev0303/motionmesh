@@ -103,6 +103,7 @@ export async function handleProcessRequest({
           const filename = formData.get("filename");
           const sizeBytes = formData.get("sizeBytes");
           const bucketId = formData.get("bucketId");
+          const transcodeBucketId = formData.get("transcodeBucketId");
 
           if (!(video instanceof File)) {
             return Response.json(
@@ -131,7 +132,10 @@ export async function handleProcessRequest({
             filename,
             Number(sizeBytes),
             video,
-            typeof bucketId === "string" ? bucketId : undefined
+            typeof bucketId === "string" ? bucketId : undefined,
+            typeof transcodeBucketId === "string"
+              ? transcodeBucketId
+              : undefined
           );
 
           return Response.json({ video: uploadResult });

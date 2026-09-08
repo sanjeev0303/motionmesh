@@ -1,101 +1,60 @@
 ---
 title: Player
-description: Drop-in React video player with HLS, captions, and chapters — built on Vidstack.
+description: Play back HLS videos with hls.js or the native HTML5 video element.
 ---
 
-# Player SDK Reference
+# Player
 
-**Package:** `@motionmesh/player`  
-**Built on:** Vidstack — HLS, captions, chapters, and thumbnails included.
+MotionMesh transcodes every video into HLS renditions. Play them back with any HLS-capable player — no extra SDK required.
 
-## Installation
+## Get the playback URL
 
-```bash
-npm install @motionmesh/player
-```
+`GET /v1/videos/{id}/playback` returns the signed HLS playlist, subtitle, and timeline sprite URLs for a ready video:
 
-## Basic usage
-
-```tsx
-import { MotionMeshPlayer } from "@motionmesh/player/react";
-
-export default function VideoPage({ videoId }: { videoId: string }) {
-  return (
-    <MotionMeshPlayer
-      src={`https://api.motionmesh.co.in/v1/videos/${videoId}/hls/master.m3u8`}
-      poster={`https://api.motionmesh.co.in/v1/buckets/default/objects/videos/${videoId}/poster.jpg`}
-    />
-  );
+```json
+{
+  "playlistUrl": "https://api.motionmesh.co.in/v1/videos/vid_abc/hls/master.m3u8",
+  "subtitleUrl": "https://api.motionmesh.co.in/v1/videos/vid_abc/captions/en.vtt",
+  "timelineSpritesUrl": "https://api.motionmesh.co.in/v1/videos/vid_abc/sprites.jpg"
 }
 ```
 
-## Props
-
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `src` | `string` | ✓ | HLS master playlist URL |
-| `poster` | `string` | | Poster/thumbnail image URL |
-| `captions` | `CaptionTrack[]` | | Caption track list |
-| `chapters` | `Chapter[]` | | Chapter marker list |
-| `autoPlay` | `boolean` | | Auto-play on mount |
-| `muted` | `boolean` | | Start muted |
-| `loop` | `boolean` | | Loop playback |
-| `className` | `string` | | CSS class for the wrapper |
-
-## Types
-
-```ts
-type CaptionTrack = {
-  src: string;       // .vtt URL
-  label: string;     // e.g. "English"
-  language: string;  // BCP-47 code, e.g. "en"
-  default?: boolean;
-};
-
-type Chapter = {
-  startTime: number;  // seconds
-  title: string;
-};
-```
-
-## With captions and chapters
+## hls.js (all browsers)
 
 ```tsx
-<MotionMeshPlayer
-  src="https://api.motionmesh.co.in/v1/videos/vid_abc/hls/master.m3u8"
-  poster="https://api.motionmesh.co.in/v1/buckets/default/objects/videos/vid_abc/poster.jpg"
-  captions={[{
-    src: "https://api.motionmesh.co.in/v1/buckets/default/objects/videos/vid_abc/captions/en.vtt",
-    label: "English",
-    language: "en",
-    default: true,
-  }]}
-  chapters={[
-    { startTime: 0, title: "Introduction" },
-    { startTime: 60, title: "Core concepts" },
-    { startTime: 180, title: "Demo" },
-  ]}
-/>
-```
+import Hls from "hls.js";
 
-## Server-side rendering (Next.js)
-
-```tsx
-import dynamic from "next/dynamic";
-
-const MotionMeshPlayer = dynamic(
-  () => import("@motionmesh/player/react").then((m) => m.MotionMeshPlayer),
-  { ssr: false }
-);
-```
-
-## Theming
-
-```css
-:root {
-  --mm-player-brand: #6d28d9;
-  --mm-player-bg: #000;
-  --mm-player-controls-bg: rgba(0,0,0,0.5);
-  --mm-player-font: "Inter", sans-serif;
+const video = document.createElement("video");
+if (Hls.isSupported()) {
+  const hls = new Hls();
+  hls.loadSource("https://api.motionmesh.co.in/v1/videos/vid_abc/hls/master.m3u8");
+  hls.attachMedia(video);
 }
+```
+
+## Native HTML5 video
+
+Safari plays HLS natively — no JavaScript needed:
+
+```html
+<video controls>
+  <source src="https://api.motionmesh.co.in/v1/videos/vid_abc/hls/master.m3u8" type="application/x-mpegURL" />
+</video>
+```
+
+## Captions
+
+Attach the generated WebVTT file as a `<track>` element:
+
+```html
+<video controls>
+  <source src="https://api.motionmesh.co.in/v1/videos/vid_abc/hls/master.m3u8" type="application/x-mpegURL" />
+  <track
+    kind="subtitles"
+    src="https://api.motionmesh.co.in/v1/videos/vid_abc/captions/en.vtt"
+    srclang="en"
+    label="English"
+    default
+  />
+</video>
 ```

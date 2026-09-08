@@ -17,7 +17,7 @@ export function DemoPlayer() {
       <div className="container mx-auto px-4 max-w-5xl">
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-borderSubtle bg-base/60 text-xs font-mono text-accent-motion mb-6">
-            @motionmesh/player
+            hls.js
           </div>
           <h2 className="text-3xl md:text-4xl font-display font-semibold mb-4">
             Feel the control.

@@ -16,6 +16,6 @@ export const socialLinks = {
   discussions: 'https://github.com/sanjeev0303/motionmesh/discussions',
   issues: 'https://github.com/sanjeev0303/motionmesh/issues',
   npmSdk: 'https://www.npmjs.com/package/@motionmesh/sdk',
-  npmPlayer: 'https://www.npmjs.com/package/@motionmesh/player',
+  npmStorage: 'https://www.npmjs.com/package/@motionmesh/storage',
   email: 'support@motionmesh.co.in',
 };

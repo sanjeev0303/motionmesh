@@ -39,8 +39,8 @@ var PlanQuotas = map[string]models.PlanQuota{
 		EgressBytes:         10 * 1024 * 1024 * 1024, // 10 GB/month (recorded, not blocked)
 		TranscodeMinutes:    30,                       // 30 minutes/month
 		MaxVideos:           20,
-		MaxBuckets:          1,
-		MaxAPIKeys:          2,
+		MaxBuckets:          3,
+		MaxAPIKeys:          3,
 		MaxVideoSizeMB:      200,  // 200 MB per video
 		MaxVideoDurationSec: 300,  // 5 min per video (SD only)
 		TranscodeQuality:    "sd",

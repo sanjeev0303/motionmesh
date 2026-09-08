@@ -8,17 +8,12 @@ WORKDIR /app
 # Copy the entire workspace needed for installing client dependencies
 COPY client/dashboard/package.json client/dashboard/package-lock.json* ./client/dashboard/
 COPY sdk/js/packages/sdk/package.json ./sdk/js/packages/sdk/
-COPY sdk/js/packages/player/package.json ./sdk/js/packages/player/
 
 # For local file dependencies, npm ci often needs the actual files to create symlinks
 # so we copy the full sdk directory as well.
 COPY sdk/js ./sdk/js
 
 WORKDIR /app/sdk/js/packages/sdk
-RUN --mount=type=cache,target=/root/.npm \
-    npm install && npm run build
-
-WORKDIR /app/sdk/js/packages/player
 RUN --mount=type=cache,target=/root/.npm \
     npm install && npm run build
 

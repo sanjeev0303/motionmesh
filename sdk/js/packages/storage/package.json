@@ -1,0 +1,71 @@
+{
+    "name": "@motionmesh/storage",
+    "version": "1.0.1",
+    "description": "Storage SDK for Motionmesh API — two-bucket video storage with transcoding",
+    "license": "MIT",
+    "author": "Sanjeev0303",
+    "type": "module",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "import": {
+                "types": "./dist/index.d.ts",
+                "default": "./dist/index.js"
+            },
+            "require": {
+                "types": "./dist/index.d.cts",
+                "default": "./dist/index.cjs"
+            }
+        },
+        "./server": {
+            "import": {
+                "types": "./dist/server.d.ts",
+                "default": "./dist/server.js"
+            },
+            "require": {
+                "types": "./dist/server.d.cts",
+                "default": "./dist/server.cjs"
+            }
+        }
+    },
+    "sideEffects": false,
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org/"
+    },
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rm -rf dist",
+        "pack:dry-run": "npm pack --dry-run",
+        "typecheck": "tsc --noEmit",
+        "prepublishOnly": "npm run clean && npm run build"
+    },
+    "keywords": [
+        "video-hosting",
+        "storage",
+        "motionmesh"
+    ],
+    "homepage": "https://github.com/sanjeev0303/motionmesh#readme",
+    "bugs": {
+        "url": "https://github.com/sanjeev0303/motionmesh/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/sanjeev0303/motionmesh.git",
+        "directory": "sdk/js/packages/storage"
+    },
+    "engines": {
+        "node": ">=18"
+    },
+    "devDependencies": {
+        "@types/node": "^25.3.3",
+        "tsup": "^8.5.1",
+        "typescript": "^5.9.3"
+    }
+}

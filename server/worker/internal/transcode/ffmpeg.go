@@ -136,15 +136,21 @@ func encodeRendition(ctx context.Context, inputPath string, probe *ProbeResult, 
 		opacity := watermark.Opacity
 		if opacity <= 0 {
 			opacity = 0.8
+		} else if opacity > 1 {
+			opacity = 1
 		}
 		overlayPos := "W-w-10:H-h-10"
 		switch watermark.Position {
+		case "center":
+			overlayPos = "(W-w)/2:(H-h)/2"
 		case "top-left":
 			overlayPos = "10:10"
 		case "top-right":
 			overlayPos = "W-w-10:10"
 		case "bottom-left":
 			overlayPos = "10:H-h-10"
+		case "bottom-right":
+			overlayPos = "W-w-10:H-h-10"
 		}
 		filterChain = fmt.Sprintf(
 			"[1:v]format=argb,colorchannelmixer=aa=%f[wm];[0:v][wm]overlay=%s,scale=-2:%d[vout]",

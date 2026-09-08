@@ -5,6 +5,16 @@ description: Recent releases, new features, and breaking changes.
 
 # Changelog
 
+## v0.6.0 — 2026-09
+
+### Breaking
+- **`@motionmesh/player` SDK removed** — playback now uses the standard HLS URLs with `hls.js` or a native `<video>` element. See [Player](/docs/player).
+
+### Added
+- **`@motionmesh/storage`** — server-side SDK for two-bucket storage (source video bucket + transcode bucket), presigned uploads, and playback lookup.
+
+---
+
 ## v0.5.0 — 2026-08
 
 ### Added
@@ -48,7 +58,7 @@ description: Recent releases, new features, and breaking changes.
 
 ### Added
 
-- `@motionmesh/player` — React video player built on Vidstack with HLS, captions, and sprite preview.
+- `@motionmesh/player` — React video player built on Vidstack with HLS, captions, and sprite preview. *(removed in v0.6.0; use `hls.js` / native `<video>` instead)*
 
 ### Fixed
 - `401` / `403` / `429` API error handling added to all dashboard data hooks.

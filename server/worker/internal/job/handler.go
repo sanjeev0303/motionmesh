@@ -169,6 +169,27 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 		return h.failJob(ctx, videoID, fmt.Errorf("video duration %.0fs exceeds the %ds maximum for this plan", probeRes.Duration, maxDurationSec))
 	}
 
+	var watermark *models.WatermarkMetadata
+	if !alreadyEncoded {
+		wm, wmErr := h.getActiveWatermark(ctx, accountID)
+		if wmErr != nil {
+			h.log.Error("get active watermark for video %s: %v (encoding without watermark)", videoID, wmErr)
+		} else if wm != nil {
+			wmExt := filepath.Ext(wm.AssetObjectKey)
+			if wmExt == "" {
+				wmExt = ".png"
+			}
+			wmPath := filepath.Join(tmpDir, "watermark"+wmExt)
+			if err := h.downloadSource(ctx, wm.AssetObjectKey, wmPath, &sourceBucketName); err != nil {
+				h.log.Error("download watermark for video %s: %v (encoding without watermark)", videoID, err)
+			} else {
+				localCopy := *wm
+				localCopy.AssetObjectKey = wmPath
+				watermark = &localCopy
+			}
+		}
+	}
+
 	// 4. ABR Ladder
 	renditions := transcode.BuildLadder(probeRes.Height)
 
@@ -178,7 +199,7 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 	if !alreadyEncoded {
 		eg.Go(func() error {
 			h.log.Info("Starting HLS encode for video: %s", videoID)
-			_, err := transcode.Encode(egCtx, sourcePath, probeRes, renditions, nil, tmpDir, func(percent int) {
+			_, err := transcode.Encode(egCtx, sourcePath, probeRes, renditions, watermark, tmpDir, func(percent int) {
 				h.updateJobProgress(egCtx, videoID, percent)
 			})
 			if err != nil {
@@ -527,6 +548,23 @@ func (h *Handler) getAccountIDWithRetry(ctx context.Context, videoID string) (st
 		delay *= 2
 	}
 	return "", fmt.Errorf("unreachable")
+}
+
+func (h *Handler) getActiveWatermark(ctx context.Context, accountID string) (*models.WatermarkMetadata, error) {
+	var wm models.WatermarkMetadata
+	err := h.db.QueryRowContext(ctx, `SELECT id, account_id, asset_object_key, position, opacity, is_active, created_at
+		FROM watermark_metadata
+		WHERE account_id = $1 AND is_active = true
+		ORDER BY created_at DESC
+		LIMIT 1`, accountID).
+		Scan(&wm.ID, &wm.AccountID, &wm.AssetObjectKey, &wm.Position, &wm.Opacity, &wm.IsActive, &wm.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &wm, nil
 }
 
 func (h *Handler) saveObjectsForJob(ctx context.Context, bucketID string, objects []uploader.UploadedFile) error {

@@ -5,7 +5,7 @@ dev:
 
 link-sdk:
 	@echo "Linking local SDK to dashboard for development..."
-	cd client/dashboard && npm install ../../sdk/js/packages/sdk ../../sdk/js/packages/player --no-save
+	cd client/dashboard && npm install ../../sdk/js/packages/sdk --no-save
 	@echo "Remember to revert package.json before committing!"
 
 stop:

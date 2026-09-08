@@ -50,7 +50,6 @@ export default function UploadPage() {
 "use client";
 import { useEffect, useState } from "react";
 import { motionmesh } from "@motionmesh/sdk";
-import { MotionMeshPlayer } from "@motionmesh/player/react";
 
 type Video = {
   id: string;
@@ -73,11 +72,15 @@ export default function ProfileFeed({ params }: { params: { userId: string } }) 
       {videos.map((v) => (
         <div key={v.id} className="rounded-lg overflow-hidden border">
           {v.status === "ready" ? (
-            <MotionMeshPlayer
+            <video
+              controls
+              playsInline
+              preload="metadata"
               src={`https://api.motionmesh.co.in/v1/videos/${v.id}/hls/master.m3u8`}
               poster={v.thumbnail_key
                 ? `https://api.motionmesh.co.in/v1/buckets/default/objects/${v.thumbnail_key}`
                 : undefined}
+              className="w-full aspect-video"
             />
           ) : (
             <div className="aspect-video bg-gray-100 flex items-center justify-center text-sm text-gray-400">

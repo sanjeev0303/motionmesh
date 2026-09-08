@@ -33,6 +33,8 @@ import (
 	"github.com/motionmesh/server/api/internal/transcode"
 	"github.com/motionmesh/server/api/internal/videos"
 	videospostgres "github.com/motionmesh/server/api/internal/videos/postgres"
+	"github.com/motionmesh/server/api/internal/watermarks"
+	watermarkpostgres "github.com/motionmesh/server/api/internal/watermarks/postgres"
 	"github.com/motionmesh/server/shared/config"
 	"github.com/motionmesh/server/shared/logger"
 	"github.com/motionmesh/server/shared/models"
@@ -127,6 +129,10 @@ func main() {
 	videosSvc := videos.NewService(videosRepo)
 	transcodeSvc := transcode.NewService(db, nc)
 
+	// ── Watermarks ────────────────────────────────────────────────────────────
+	watermarkRepo := watermarkpostgres.NewRepository(db)
+	watermarkSvc := watermarks.NewService(watermarkRepo)
+
 	// ── Router ────────────────────────────────────────────────────────────────
 	r := chi.NewRouter()
 	
@@ -204,6 +210,12 @@ func main() {
 		r.Route("/v1/buckets", func(r chi.Router) {
 			bucketsHandler := buckets.NewHandler(bucketSvc)
 			bucketsHandler.RegisterRoutes(r)
+		})
+
+		// Watermarks
+		r.Route("/v1/watermarks", func(r chi.Router) {
+			watermarksHandler := watermarks.NewHandler(watermarkSvc, storageAdapter, bucketSvc, cfg.StorageBucket)
+			watermarksHandler.RegisterRoutes(r)
 		})
 
 		// Billing — all plans can access billing; RequirePlan enforced per endpoint inside handler

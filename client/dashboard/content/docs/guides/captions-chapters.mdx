@@ -62,28 +62,26 @@ const pollCaptionStatus = async (videoId: string) => {
 
 ## Displaying captions with the player
 
+Attach the generated `.vtt` as a `<track>` element inside an HTML5 `<video>`:
+
 ```tsx
-import { MotionMeshPlayer } from "@motionmesh/player/react";
+import { API_URL } from "./config";
 
-const API_URL = "https://api.motionmesh.co.in";
-
-<MotionMeshPlayer
-  src={`${API_URL}/v1/videos/${videoId}/hls/master.m3u8`}
-  poster={`${API_URL}/v1/buckets/default/objects/videos/${videoId}/poster.jpg`}
-  captions={[
-    {
-      src: `${API_URL}/v1/buckets/default/objects/videos/${videoId}/captions/en.vtt`,
-      label: "English",
-      language: "en",
-      default: true,
-    },
-  ]}
-/>
+<video controls>
+  <source src={`${API_URL}/v1/videos/${videoId}/hls/master.m3u8`} type="application/x-mpegURL" />
+  <track
+    kind="subtitles"
+    src={`${API_URL}/v1/videos/${videoId}/captions/en.vtt`}
+    srclang="en"
+    label="English"
+    default
+  />
+</video>
 ```
 
 ## Displaying chapters
 
-Chapter data is stored in the database. Fetch them from your API and pass to the player:
+Chapter data is stored in the database. Fetch them from your API and seek the video:
 
 ```tsx
 // Fetch from your backend
@@ -91,13 +89,22 @@ const { chapters } = await fetch(`/api/videos/${videoId}/chapters`).then(r => r.
 
 // chapters: [{ start_time_seconds: 0, title: "Intro" }, ...]
 
-<MotionMeshPlayer
-  src={`${API_URL}/v1/videos/${videoId}/hls/master.m3u8`}
-  chapters={chapters.map(c => ({
-    startTime: c.start_time_seconds,
-    title: c.title,
-  }))}
-/>
+const videoRef = useRef<HTMLVideoElement>(null);
+
+<video ref={videoRef} controls>
+  <source src={`${API_URL}/v1/videos/${videoId}/hls/master.m3u8`} type="application/x-mpegURL" />
+</video>
+
+{chapters.map((chapter) => (
+  <button
+    key={chapter.start_time_seconds}
+    onClick={() => {
+      videoRef.current!.currentTime = chapter.start_time_seconds;
+    }}
+  >
+    {chapter.title}
+  </button>
+))}
 ```
 
 ## Caption file format
@@ -116,7 +123,7 @@ Today we'll look at uploading your first video.
 
 ## Using captions with a custom player
 
-If you're not using `@motionmesh/player`, add the `.vtt` as a `<track>` element in an HTML5 `<video>`:
+Add the `.vtt` as a `<track>` element in an HTML5 `<video>`:
 
 ```html
 <video controls>

@@ -6,7 +6,8 @@ export async function dashboardUpload(
     filename: string,
     sizeBytes: number,
     videoFile: File,
-    bucketId?: string
+    bucketId?: string,
+    transcodeBucketId?: string
 ) {
     const { baseUrl } = getEnvConfig();
     const headers: Record<string, string> = {
@@ -24,7 +25,7 @@ export async function dashboardUpload(
             filename,
             size_bytes: sizeBytes,
             bucket_id: bucketId,
-            transcode_bucket_id: undefined
+            transcode_bucket_id: transcodeBucketId
         })
     });
 
@@ -37,17 +38,20 @@ export async function dashboardUpload(
     const video = initResData.video;
 
     // Step 2: Upload file directly to S3 via presigned URL
-    const uploadRes = await fetch(initResData.upload_url, {
+    // The presigned URL is signed for Content-Type "video/mp4", so that exact
+    // header must be sent or S3 rejects the signature.
+    const uploadInit: RequestInit & { duplex: "half" } = {
         method: "PUT",
         headers: {
-            "Content-Type": videoFile.type || "video/mp4",
+            "Content-Type": "video/mp4",
             "Content-Length": String(videoFile.size),
         },
         body: videoFile,
-        // Prevent fetch from chunking — Backblaze B2/S3 requires exact Content-Length
-        // @ts-ignore duplex required for streaming body in Node 18+
+        // Prevent fetch from chunking — S3 requires exact Content-Length
+        // duplex is required for streaming body in Node 18+
         duplex: "half",
-    });
+    };
+    const uploadRes = await fetch(initResData.upload_url, uploadInit);
 
     if (!uploadRes.ok) {
         const error = await uploadRes.text();
