@@ -1,4 +1,5 @@
 import { getEnvConfig } from "../configs/index.js";
+import { parseJsonResponse } from "../utils/parseApiResponse.js";
 import { FinalizeUploadParams } from "../types/index.js";
 
 export const finalizeUpload = async ({
@@ -15,15 +16,5 @@ export const finalizeUpload = async ({
         },
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-        const msg =
-            Array.isArray(data?.message)
-                ? data.message.join(", ")
-                : data?.message || data?.error || "Failed to finalize upload";
-        throw new Error(msg);
-    }
-
-    return data;
+    return parseJsonResponse(response, "Failed to finalize upload");
 };

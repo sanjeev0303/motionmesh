@@ -1,4 +1,5 @@
 import { getEnvConfig } from "../configs/index.js";
+import { parseJsonResponse } from "../utils/parseApiResponse.js";
 import { InitiateUploadParams, InitiateUploadResult } from "../types/index.js";
 
 export const initiateUpload = async ({
@@ -26,15 +27,5 @@ export const initiateUpload = async ({
         }),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-        const msg =
-            Array.isArray(data?.message)
-                ? data.message.join(", ")
-                : data?.message || data?.error || "Failed to initiate upload";
-        throw new Error(msg);
-    }
-
-    return data;
+    return parseJsonResponse(response, "Failed to initiate upload");
 };

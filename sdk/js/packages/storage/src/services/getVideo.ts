@@ -1,4 +1,5 @@
 import { getEnvConfig } from "../configs/index.js";
+import { parseJsonResponse } from "../utils/parseApiResponse.js";
 import { GetVideoParams, StorageVideo } from "../types/index.js";
 
 export const getVideo = async ({
@@ -14,15 +15,5 @@ export const getVideo = async ({
         },
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-        const msg =
-            Array.isArray(data?.message)
-                ? data.message.join(", ")
-                : data?.message || data?.error || "Failed to get the video";
-        throw new Error(msg);
-    }
-
-    return data;
+    return parseJsonResponse(response, "Failed to get the video");
 };

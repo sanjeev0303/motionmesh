@@ -1,6 +1,6 @@
 {
     "name": "@motionmesh/storage",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Storage SDK for Motionmesh API — two-bucket video storage with transcoding",
     "license": "MIT",
     "author": "Sanjeev0303",

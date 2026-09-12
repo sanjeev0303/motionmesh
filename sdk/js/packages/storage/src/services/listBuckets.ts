@@ -1,4 +1,5 @@
 import { getEnvConfig } from "../configs/index.js";
+import { parseJsonResponse } from "../utils/parseApiResponse.js";
 import { StorageBucket } from "../types/index.js";
 
 export const listBuckets = async (credential: string): Promise<StorageBucket[]> => {
@@ -11,15 +12,5 @@ export const listBuckets = async (credential: string): Promise<StorageBucket[]> 
         },
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-        const msg =
-            Array.isArray(data?.message)
-                ? data.message.join(", ")
-                : data?.message || data?.error || "Failed to list buckets";
-        throw new Error(msg);
-    }
-
-    return data;
+    return parseJsonResponse(response, "Failed to list buckets");
 };

@@ -1,4 +1,5 @@
 import { getEnvConfig } from "../configs/index.js";
+import { parseJsonResponse } from "../utils/parseApiResponse.js";
 import { ListVideosParams, StorageVideo } from "../types/index.js";
 
 export const listVideos = async ({
@@ -25,15 +26,5 @@ export const listVideos = async ({
         },
     );
 
-    const data = await response.json();
-
-    if (!response.ok) {
-        const msg =
-            Array.isArray(data?.message)
-                ? data.message.join(", ")
-                : data?.message || data?.error || "Failed to list videos";
-        throw new Error(msg);
-    }
-
-    return data;
+    return parseJsonResponse(response, "Failed to list videos");
 };

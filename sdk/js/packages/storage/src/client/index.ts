@@ -1,4 +1,5 @@
 import { uploadToPresignedUrl } from "../services/uploadToPresignedUrl.js";
+import { parseJsonResponse } from "../utils/parseApiResponse.js";
 import { UploadToPresignedUrlParams } from "../types/index.js";
 
 const PROXY_BASE_URL = "/api/motionmesh";
@@ -16,17 +17,7 @@ const processRequest = async (
     body: JSON.stringify(body),
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    const msg =
-      Array.isArray(data?.message)
-        ? data.message.join(", ")
-        : data?.message || data?.error || "Request failed";
-    throw new Error(`[Motionmesh] ${msg}`);
-  }
-
-  return data;
+  return parseJsonResponse(response, "Request failed");
 };
 
 const processFormDataRequest = async (
@@ -39,17 +30,7 @@ const processFormDataRequest = async (
     body: formData,
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    const msg =
-      Array.isArray(data?.message)
-        ? data.message.join(", ")
-        : data?.message || data?.error || "Request failed";
-    throw new Error(`[Motionmesh] ${msg}`);
-  }
-
-  return data;
+  return parseJsonResponse(response, "Request failed");
 };
 
 class MotionmeshStorage {
