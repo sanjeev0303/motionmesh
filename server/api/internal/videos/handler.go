@@ -550,32 +550,21 @@ func (h *Handler) HandleGetPlaybackInfo(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Use the HLS proxy URL instead of a presigned S3 URL.
-	// This avoids CORS/401 issues: the browser fetches via our API which signs S3 requests.
+	// Serve every playback asset through the public HLS proxy instead of
+	// presigned S3 URLs. The proxy adds Access-Control-Allow-Origin: * on all
+	// responses, so captions, sprites and HLS can be loaded cross-origin by
+	// embedded players without CORS blocks, expiry, or 401 issues.
 	baseProxyURL := fmt.Sprintf("%s/v1/videos/%s/hls", getProxyBaseURL(r), video.ID)
 	playlistUrl := fmt.Sprintf("%s/master.m3u8", baseProxyURL)
 
 	var subtitleUrl string
 	if video.CaptionsStatus == "ready" {
-		capKey := fmt.Sprintf("videos/%s/captions/en.vtt", video.ID)
-		bucket := video.BucketID
-		if video.TranscodeBucketID != nil {
-			bucket = *video.TranscodeBucketID
-		}
-		bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, bucket)
-		url, _ := h.storage.GetPresignedURL(r.Context(), bucketName, capKey)
-		subtitleUrl = url
+		subtitleUrl = fmt.Sprintf("%s/en.vtt", baseProxyURL)
 	}
 
 	var timelineSpritesUrl string
 	if video.SpriteKey != nil {
-		bucket := video.BucketID
-		if video.TranscodeBucketID != nil {
-			bucket = *video.TranscodeBucketID
-		}
-		bucketName := h.getPhysicalBucketName(r.Context(), acc.ID, bucket)
-		url, _ := h.storage.GetPresignedURL(r.Context(), bucketName, *video.SpriteKey)
-		timelineSpritesUrl = url
+		timelineSpritesUrl = fmt.Sprintf("%s/thumbnails/%s", baseProxyURL, filepath.Base(*video.SpriteKey))
 	}
 
 	response := map[string]interface{}{
@@ -627,6 +616,43 @@ func (h *Handler) HandleHLSProxy(w http.ResponseWriter, r *http.Request) {
 		defer body.Close()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "text/vtt; charset=utf-8")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		cw := &counterWriter{w: w}
+		buf := make([]byte, 32*1024)
+		for {
+			n, err := body.Read(buf)
+			if n > 0 {
+				_, _ = cw.Write(buf[:n])
+			}
+			if err != nil {
+				break
+			}
+		}
+		h.recordEgressAsync(video.AccountID, cw.n)
+		return
+	}
+
+	// ── Timeline sprite sheets ─────────────────────────────────────────────
+	// Sprite JPEGs are stored under videos/{id}/thumbnails/ by the worker, NOT
+	// under hls/. Intercept thumbnails/* (e.g. thumbnails/sprite.jpg) and serve
+	// from the lateral thumbnails prefix so they are publicly proxied with CORS
+	// headers, exactly like captions.
+	if strings.HasPrefix(segPath, "thumbnails/") {
+		spriteKey := fmt.Sprintf("videos/%s/%s", videoID, segPath)
+		bucket := video.BucketID
+		if video.TranscodeBucketID != nil {
+			bucket = *video.TranscodeBucketID
+		}
+		bucketName := h.getPhysicalBucketName(r.Context(), video.AccountID, bucket)
+		body, err := h.storage.GetObjectStream(r.Context(), bucketName, spriteKey)
+		if err != nil {
+			logger.New().Error("hls proxy: sprite %s: %v", spriteKey, err)
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		defer body.Close()
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "image/jpeg")
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		cw := &counterWriter{w: w}
 		buf := make([]byte, 32*1024)
