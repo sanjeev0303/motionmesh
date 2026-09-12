@@ -171,6 +171,19 @@ func (h *Handler) HandleDeleteVideo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Purge the untracked derived files (HLS segments, captions, sprite frames)
+	// stored under videos/{videoID}/ in the transcode bucket. Fall back to the
+	// main bucket when no transcode bucket is configured.
+	derivedBucket := video.BucketID
+	if video.TranscodeBucketID != nil {
+		derivedBucket = *video.TranscodeBucketID
+	}
+	derivedBucketName := h.getPhysicalBucketName(r.Context(), acc.ID, derivedBucket)
+	prefix := fmt.Sprintf("videos/%s/", id)
+	if err := h.storage.DeleteObjectsByPrefix(r.Context(), derivedBucketName, prefix); err != nil {
+		logger.New().Error("failed to purge derived files under %s for video %s: %v", prefix, id, err)
+	}
+
 	logger.New().Info("successfully deleted video id: %s", id)
 
 	w.WriteHeader(http.StatusNoContent)

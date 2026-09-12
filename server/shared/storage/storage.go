@@ -21,6 +21,8 @@ type ObjectStorage interface {
 	PresignUploadPart(ctx context.Context, bucket, key, uploadID string, partNumber int32) (presignedURL string, err error)
 	CompleteMultipartUpload(ctx context.Context, bucket, key, uploadID string, parts []CompletedPart) error
 	AbortMultipartUpload(ctx context.Context, bucket, key, uploadID string) error
+	// DeleteObjectsByPrefix removes every object under the given prefix.
+	DeleteObjectsByPrefix(ctx context.Context, bucket, prefix string) error
 }
 
 // CompletedPart mirrors the S3 completed-part structure so the interface

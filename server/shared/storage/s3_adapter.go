@@ -112,6 +112,39 @@ func (a *S3Adapter) DeleteObject(ctx context.Context, bucket string, key string)
 	return err
 }
 
+func (a *S3Adapter) DeleteObjectsByPrefix(ctx context.Context, bucket string, prefix string) error {
+	paginator := s3.NewListObjectsV2Paginator(a.client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(bucket),
+		Prefix: aws.String(prefix),
+	})
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return err
+		}
+
+		if len(page.Contents) == 0 {
+			continue
+		}
+
+		identifiers := make([]awss3types.ObjectIdentifier, 0, len(page.Contents))
+		for _, obj := range page.Contents {
+			identifiers = append(identifiers, awss3types.ObjectIdentifier{Key: obj.Key})
+		}
+
+		_, err = a.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+			Bucket: aws.String(bucket),
+			Delete: &awss3types.Delete{Objects: identifiers},
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (a *S3Adapter) GetPresignedURL(ctx context.Context, bucket string, key string) (string, error) {
 	req, err := a.presigner.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
