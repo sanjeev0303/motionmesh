@@ -9,13 +9,13 @@ MotionMesh transcodes every video into HLS renditions. Play them back with any H
 
 ## Get the playback URL
 
-`GET /v1/videos/{id}/playback` returns the signed HLS playlist, subtitle, and timeline sprite URLs for a ready video:
+`GET /v1/videos/{id}/playback` returns the HLS playlist, subtitle, and timeline sprite URLs for a ready video. Every URL is proxied through the public HLS endpoint with CORS enabled (`Access-Control-Allow-Origin: *`), so you can embed playback directly in your landing page or web application from any origin — no signed URLs, no expiry, no extra configuration:
 
 ```json
 {
   "playlistUrl": "https://api.motionmesh.co.in/v1/videos/vid_abc/hls/master.m3u8",
-  "subtitleUrl": "https://api.motionmesh.co.in/v1/videos/vid_abc/captions/en.vtt",
-  "timelineSpritesUrl": "https://api.motionmesh.co.in/v1/videos/vid_abc/sprites.jpg"
+  "subtitleUrl": "https://api.motionmesh.co.in/v1/videos/vid_abc/hls/en.vtt",
+  "timelineSpritesUrl": "https://api.motionmesh.co.in/v1/videos/vid_abc/hls/thumbnails/sprite.jpg"
 }
 ```
 
@@ -51,10 +51,42 @@ Attach the generated WebVTT file as a `<track>` element:
   <source src="https://api.motionmesh.co.in/v1/videos/vid_abc/hls/master.m3u8" type="application/x-mpegURL" />
   <track
     kind="subtitles"
-    src="https://api.motionmesh.co.in/v1/videos/vid_abc/captions/en.vtt"
+    src="https://api.motionmesh.co.in/v1/videos/vid_abc/hls/en.vtt"
     srclang="en"
     label="English"
     default
   />
 </video>
+```
+
+## Embed in your app with infinite loop
+
+The `playlistUrl` is a public, CORS-enabled URL — drop it directly into any HTML5 `<video>` element in your landing page or web application. Add the `loop` attribute (plus `autoplay`/`muted`/`playsInline` for a seamless background loop):
+
+```html
+<video loop autoplay muted playsInline controls>
+  <source src="https://api.motionmesh.co.in/v1/videos/vid_abc/hls/master.m3u8" type="application/x-mpegURL" />
+</video>
+```
+
+With hls.js (all browsers), set `video.loop = true`:
+
+```tsx
+import Hls from "hls.js";
+
+const video = document.createElement("video");
+video.loop = true; // replays the video automatically when it ends
+if (Hls.isSupported()) {
+  const hls = new Hls();
+  hls.loadSource("https://api.motionmesh.co.in/v1/videos/vid_abc/hls/master.m3u8");
+  hls.attachMedia(video);
+}
+```
+
+In the MotionMesh dashboard React component, pass the `loop` prop:
+
+```tsx
+import { VideoPlayer } from "@/components/dashboard/VideoPlayer";
+
+<VideoPlayer src={playbackInfo.playlistUrl} subtitleUrl={playbackInfo.subtitleUrl} loop />
 ```

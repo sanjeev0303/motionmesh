@@ -7,10 +7,11 @@ interface VideoPlayerProps {
   src: string;
   subtitleUrl?: string;
   autoPlay?: boolean;
+  loop?: boolean;
   className?: string;
 }
 
-export function VideoPlayer({ src, subtitleUrl, autoPlay = false, className }: VideoPlayerProps) {
+export function VideoPlayer({ src, subtitleUrl, autoPlay = false, loop = false, className }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function VideoPlayer({ src, subtitleUrl, autoPlay = false, className }: V
       controls
       playsInline
       autoPlay={autoPlay}
+      loop={loop}
       className={className}
     >
       {subtitleUrl ? (
