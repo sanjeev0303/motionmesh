@@ -28,7 +28,7 @@ interface VideoJobRowProps {
 
 export function VideoJobRow({ video }: VideoJobRowProps) {
   const reducedMotion = useReducedMotion();
-  const progress = video.status === "processing" ? 50 : 0;
+  const progress = video.status === "processing" ? Math.max(0, Math.min(99, video.progress_percent ?? 0)) : 0;
 
   return (
     <TableRow className="border-borderSubtle hover:bg-surface-raised/50 group transition-colors">

@@ -23,7 +23,7 @@ func (r *Repository) ListByAccount(ctx context.Context, accountID string, extern
 		limit = 20
 	}
 
-	query := `SELECT id, account_id, bucket_id, transcode_bucket_id, object_key, thumbnail_key, sprite_key, preview_key, title, status, captions_status, duration, size_bytes, external_user_id, created_at, updated_at
+	query := `SELECT id, account_id, bucket_id, transcode_bucket_id, object_key, thumbnail_key, sprite_key, preview_key, title, status, captions_status, COALESCE((SELECT progress_percent FROM transcode_jobs WHERE video_id = videos.id LIMIT 1), 0) AS progress_percent, duration, size_bytes, external_user_id, created_at, updated_at
 		 FROM videos
 		 WHERE account_id = $1`
 	
@@ -54,7 +54,7 @@ func (r *Repository) ListByAccount(ctx context.Context, accountID string, extern
 	var videos []*models.Video
 	for rows.Next() {
 		var v models.Video
-		if err := rows.Scan(&v.ID, &v.AccountID, &v.BucketID, &v.TranscodeBucketID, &v.ObjectKey, &v.ThumbnailKey, &v.SpriteKey, &v.PreviewKey, &v.Title, &v.Status, &v.CaptionsStatus, &v.Duration, &v.SizeBytes, &v.ExternalUserID, &v.CreatedAt, &v.UpdatedAt); err != nil {
+		if err := rows.Scan(&v.ID, &v.AccountID, &v.BucketID, &v.TranscodeBucketID, &v.ObjectKey, &v.ThumbnailKey, &v.SpriteKey, &v.PreviewKey, &v.Title, &v.Status, &v.CaptionsStatus, &v.ProgressPercent, &v.Duration, &v.SizeBytes, &v.ExternalUserID, &v.CreatedAt, &v.UpdatedAt); err != nil {
 			return nil, err
 		}
 		videos = append(videos, &v)
@@ -65,11 +65,11 @@ func (r *Repository) ListByAccount(ctx context.Context, accountID string, extern
 func (r *Repository) GetByID(ctx context.Context, id, accountID string) (*models.Video, error) {
 	var v models.Video
 	err := r.db.QueryRow(ctx,
-		`SELECT id, account_id, bucket_id, transcode_bucket_id, object_key, thumbnail_key, sprite_key, preview_key, title, status, captions_status, duration, size_bytes, external_user_id, created_at, updated_at
+		`SELECT id, account_id, bucket_id, transcode_bucket_id, object_key, thumbnail_key, sprite_key, preview_key, title, status, captions_status, COALESCE((SELECT progress_percent FROM transcode_jobs WHERE video_id = videos.id LIMIT 1), 0) AS progress_percent, duration, size_bytes, external_user_id, created_at, updated_at
 		 FROM videos
 		 WHERE id = $1 AND account_id = $2`,
 		id, accountID,
-	).Scan(&v.ID, &v.AccountID, &v.BucketID, &v.TranscodeBucketID, &v.ObjectKey, &v.ThumbnailKey, &v.SpriteKey, &v.PreviewKey, &v.Title, &v.Status, &v.CaptionsStatus, &v.Duration, &v.SizeBytes, &v.ExternalUserID, &v.CreatedAt, &v.UpdatedAt)
+	).Scan(&v.ID, &v.AccountID, &v.BucketID, &v.TranscodeBucketID, &v.ObjectKey, &v.ThumbnailKey, &v.SpriteKey, &v.PreviewKey, &v.Title, &v.Status, &v.CaptionsStatus, &v.ProgressPercent, &v.Duration, &v.SizeBytes, &v.ExternalUserID, &v.CreatedAt, &v.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -79,11 +79,11 @@ func (r *Repository) GetByID(ctx context.Context, id, accountID string) (*models
 func (r *Repository) GetPublicByID(ctx context.Context, id string) (*models.Video, error) {
 	var v models.Video
 	err := r.db.QueryRow(ctx,
-		`SELECT id, account_id, bucket_id, transcode_bucket_id, object_key, thumbnail_key, sprite_key, preview_key, title, status, captions_status, duration, size_bytes, external_user_id, created_at, updated_at
+		`SELECT id, account_id, bucket_id, transcode_bucket_id, object_key, thumbnail_key, sprite_key, preview_key, title, status, captions_status, COALESCE((SELECT progress_percent FROM transcode_jobs WHERE video_id = videos.id LIMIT 1), 0) AS progress_percent, duration, size_bytes, external_user_id, created_at, updated_at
 		 FROM videos
 		 WHERE id = $1`,
 		id,
-	).Scan(&v.ID, &v.AccountID, &v.BucketID, &v.TranscodeBucketID, &v.ObjectKey, &v.ThumbnailKey, &v.SpriteKey, &v.PreviewKey, &v.Title, &v.Status, &v.CaptionsStatus, &v.Duration, &v.SizeBytes, &v.ExternalUserID, &v.CreatedAt, &v.UpdatedAt)
+	).Scan(&v.ID, &v.AccountID, &v.BucketID, &v.TranscodeBucketID, &v.ObjectKey, &v.ThumbnailKey, &v.SpriteKey, &v.PreviewKey, &v.Title, &v.Status, &v.CaptionsStatus, &v.ProgressPercent, &v.Duration, &v.SizeBytes, &v.ExternalUserID, &v.CreatedAt, &v.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}

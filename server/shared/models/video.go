@@ -23,6 +23,7 @@ type Video struct {
 	Title          string      `json:"title" db:"title"`
 	Status         VideoStatus `json:"status" db:"status"`
 	CaptionsStatus string      `json:"captions_status" db:"captions_status"`
+	ProgressPercent int        `json:"progress_percent" db:"progress_percent"`
 	Duration       float64     `json:"duration" db:"duration"`
 	SizeBytes      float64     `json:"size_bytes" db:"size_bytes"`
 	ExternalUserID *string     `json:"external_user_id" db:"external_user_id"`

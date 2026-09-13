@@ -231,43 +231,49 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 	}
 
 	// Concurrency 2: Captions (Extract audio + Transcribe + VTT + Chapters)
-	// Runs concurrently with HLS encode but uses minimal CPU (mostly I/O wait on sidecar).
-	eg.Go(func() error {
+	// Runs in its own goroutine with a derived context so the video can be
+	// finalized (status -> ready) as soon as the HLS encode completes; whisper
+	// transcription and LLM chapter generation no longer block readiness.
+	captionsCtx, cancelCaptions := context.WithCancel(ctx)
+	var captionsWG sync.WaitGroup
+	captionsWG.Add(1)
+	go func() {
+		defer captionsWG.Done()
 		h.log.Info("Starting captions processing for video: %s", videoID)
-		if err := h.updateCaptionsStatus(egCtx, videoID, "processing"); err != nil {
+		if err := h.updateCaptionsStatus(captionsCtx, videoID, "processing"); err != nil {
 			h.log.Error("failed to set captions_status processing: %v", err)
 		}
 
 		h.log.Info("Extracting audio for video: %s", videoID)
 		// Extract audio
 		audioPath := filepath.Join(tmpDir, "audio.mp3")
-		if err := extractAudio(egCtx, sourcePath, audioPath); err != nil {
-			_ = h.updateCaptionsStatus(egCtx, videoID, "failed")
+		if err := extractAudio(captionsCtx, sourcePath, audioPath); err != nil {
+			_ = h.updateCaptionsStatus(captionsCtx, videoID, "failed")
 			h.log.Error("extract audio: %v", err)
-			return nil
+			return
 		}
 
 		includeChapters := probeRes.Duration > 10.0
 
 		h.log.Info("Transcribing audio for video: %s", videoID)
 		// Call Sidecar
-		transcribeRes, err := h.captions.Transcribe(egCtx, captions.TranscribeRequest{
+		transcribeRes, err := h.captions.Transcribe(captionsCtx, captions.TranscribeRequest{
 			AudioPath:       audioPath,
 			IncludeChapters: includeChapters,
 		})
 		if err != nil {
-			_ = h.updateCaptionsStatus(egCtx, videoID, "failed")
+			_ = h.updateCaptionsStatus(captionsCtx, videoID, "failed")
 			h.log.Error("transcribe: %v", err)
-			return nil
+			return
 		}
 
 		h.log.Info("Uploading VTT for video: %s", videoID)
 		// Upload VTT
-		vttFile, err := h.uploader.UploadCaption(egCtx, videoID, "en", transcribeRes.VTT, targetBucketID)
+		vttFile, err := h.uploader.UploadCaption(captionsCtx, videoID, "en", transcribeRes.VTT, targetBucketID)
 		if err != nil {
-			_ = h.updateCaptionsStatus(egCtx, videoID, "failed")
+			_ = h.updateCaptionsStatus(captionsCtx, videoID, "failed")
 			h.log.Error("upload vtt: %v", err)
-			return nil
+			return
 		}
 		vttKey := vttFile.Key
 		objMu.Lock()
@@ -276,33 +282,33 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 
 		h.log.Info("Saving captions and chapters to DB for video: %s", videoID)
 		// Save caption track to db
-		if err := h.saveCaptionTrack(egCtx, videoID, "en", vttKey); err != nil {
-			_ = h.updateCaptionsStatus(egCtx, videoID, "failed")
+		if err := h.saveCaptionTrack(captionsCtx, videoID, "en", vttKey); err != nil {
+			_ = h.updateCaptionsStatus(captionsCtx, videoID, "failed")
 			h.log.Error("save caption track: %v", err)
-			return nil
+			return
 		}
 
 		// Save chapters to db
 		if includeChapters && len(transcribeRes.Chapters) > 0 {
-			if err := h.saveChapters(egCtx, videoID, transcribeRes.Chapters); err != nil {
-				_ = h.updateCaptionsStatus(egCtx, videoID, "failed")
+			if err := h.saveChapters(captionsCtx, videoID, transcribeRes.Chapters); err != nil {
+				_ = h.updateCaptionsStatus(captionsCtx, videoID, "failed")
 				h.log.Error("save chapters: %v", err)
-				return nil
+				return
 			}
 		}
 
-		if err := h.updateCaptionsStatus(egCtx, videoID, "ready"); err != nil {
+		if err := h.updateCaptionsStatus(captionsCtx, videoID, "ready"); err != nil {
 			h.log.Error("failed to set captions_status ready: %v", err)
 		}
+	}()
 
-		return nil
-	})
-
-	// Wait for HLS encode + captions before running thumbnails.
+	// Wait for the HLS encode only; captions keep running in the background.
 	// Thumbnails also spawn FFmpeg processes; running them concurrently with the
 	// multi-rendition encode caused OOM kills (signal: killed).
-	h.log.Info("Waiting for encode and captions to finish for video: %s", videoID)
+	h.log.Info("Waiting for encode to finish for video: %s", videoID)
 	if err := eg.Wait(); err != nil {
+		cancelCaptions()
+		captionsWG.Wait()
 		return h.failJob(ctx, videoID, err)
 	}
 
@@ -364,15 +370,22 @@ func (h *Handler) Process(ctx context.Context, videoID string, sourceObjectKey s
 		_ = tg.Wait() // errors are logged above; never fatal
 	}
 
+	h.log.Info("Finalizing video for video: %s", videoID)
+	// 12. Finalize Video Status — mark ready once encode + thumbnails are done,
+	// without waiting on the background captions pipeline.
+	if err := h.finalizeVideo(ctx, videoID, probeRes.Duration, posterKey, spriteKey, previewKey); err != nil {
+		cancelCaptions()
+		captionsWG.Wait()
+		return h.failJob(ctx, videoID, fmt.Errorf("finalize video: %w", err))
+	}
+
+	// Wait for in-flight captions before tracking objects: the captions
+	// goroutine appends the VTT to uploadedObjects under objMu.
+	captionsWG.Wait()
+
 	h.log.Info("Saving tracked objects for video: %s", videoID)
 	if err := h.saveObjectsForJob(ctx, logicalTranscodeBucketID, uploadedObjects); err != nil {
 		h.log.Error("failed to save tracked objects: %v", err)
-	}
-
-	h.log.Info("Finalizing video for video: %s", videoID)
-	// 12. Finalize Video Status
-	if err := h.finalizeVideo(ctx, videoID, probeRes.Duration, posterKey, spriteKey, previewKey); err != nil {
-		return h.failJob(ctx, videoID, fmt.Errorf("finalize video: %w", err))
 	}
 
 	// 13. Set job status to complete

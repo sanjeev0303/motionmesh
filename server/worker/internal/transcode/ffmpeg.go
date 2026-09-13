@@ -7,10 +7,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/motionmesh/server/shared/models"
 )
@@ -36,8 +38,13 @@ func Encode(ctx context.Context, inputPath string, probe *ProbeResult, rendition
 	}
 
 	// Determine max parallel renditions based on logical CPU count.
+	// 4 threads per process (-threads 2 + x264 threads=2): NumCPU/2 processes saturate the host.
 	// Cap at 4 to avoid swapping on memory-constrained instances.
-	maxParallel := min(len(renditions), 4)
+	cpuParallel := runtime.NumCPU() / 2
+	if cpuParallel < 1 {
+		cpuParallel = 1
+	}
+	maxParallel := min(len(renditions), min(cpuParallel, 4))
 
 	type result struct {
 		label string
@@ -63,8 +70,18 @@ func Encode(ctx context.Context, inputPath string, probe *ProbeResult, rendition
 		expectedFrames = 1
 	}
 
+	// Throttle DB-latency-sensitive progress callbacks to 1/sec via atomic CAS.
+	var lastEmit atomic.Int64
 	emitProgress := func() {
 		if progressCb == nil || probe.Duration <= 0 {
+			return
+		}
+		now := time.Now().UnixNano()
+		last := lastEmit.Load()
+		if now-last < int64(time.Second) {
+			return
+		}
+		if !lastEmit.CompareAndSwap(last, now) {
 			return
 		}
 		var sum float64

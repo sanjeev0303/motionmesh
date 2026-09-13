@@ -22,6 +22,7 @@ export interface Video {
   title: string;
   status: "ready" | "processing" | "queued" | "failed";
   captions_status: "pending" | "processing" | "ready" | "failed";
+  progress_percent?: number;
   duration: number;
   external_user_id?: string;
   created_at: string;
