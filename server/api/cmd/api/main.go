@@ -180,7 +180,7 @@ func main() {
 
 		// Videos — all routes; quota is enforced inside HandleUploadInitiation
 		r.Route("/v1/videos", func(r chi.Router) {
-			videosHandler := videos.NewHandler(videosSvc, storageAdapter, transcodeSvc, bucketSvc, billingSvc, cfg.StorageBucket)
+			videosHandler := videos.NewHandler(videosSvc, storageAdapter, transcodeSvc, bucketSvc, billingSvc, cfg.StorageBucket, nc)
 			videosHandler.RegisterRoutes(r)
 		})
 

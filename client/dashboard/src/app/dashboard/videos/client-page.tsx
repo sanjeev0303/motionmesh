@@ -85,6 +85,92 @@ export function VideosClient({ initialVideos }: VideosClientProps) {
   const showSkeleton = isLoading && videos.length === 0;
   const hasVideos = videos.length > 0;
 
+  // Real-time status/progress via SSE (fetch-based since EventSource can't send
+  // the Authorization header). Patches the cache instantly; the 5s poll above
+  // remains as a fallback and for thumbnail/duration refresh after terminal states.
+  useEffect(() => {
+    let active = true;
+    let controller: AbortController | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryDelay = 2000;
+
+    const applyEvent = (evt: { video_id: string; status?: Video["status"]; progress_percent?: number }) => {
+      queryClient.setQueryData<Video[]>(["videos"], (old) => {
+        if (!old) return old;
+        let changed = false;
+        const next = old.map((v) => {
+          if (v.id !== evt.video_id) return v;
+          changed = true;
+          return {
+            ...v,
+            ...(evt.status !== undefined ? { status: evt.status } : {}),
+            ...(evt.progress_percent !== undefined ? { progress_percent: evt.progress_percent } : {}),
+          };
+        });
+        return changed ? next : old;
+      });
+      // Terminal state → refetch to pick up thumbnail_key, duration, renditions.
+      if (evt.status === "ready" || evt.status === "failed") {
+        queryClient.invalidateQueries({ queryKey: ["videos"] });
+      }
+    };
+
+    const connect = async () => {
+      if (!active) return;
+      const headers = await getAuthHeaders();
+      if (!headers.Authorization) {
+        // No token yet (Clerk still loading) — retry shortly instead of dropping the stream.
+        retryTimer = setTimeout(connect, 1000);
+        return;
+      }
+
+      controller = new AbortController();
+      const signal = controller.signal;
+      try {
+        const res = await fetch(`${API_BASE}/v1/videos/status-stream`, {
+          headers: { Accept: "text/event-stream", ...headers },
+          signal,
+        });
+        if (!res.ok || !res.body) throw new Error(`SSE status ${res.status}`);
+        retryDelay = 2000; // reset backoff after a successful connect
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (active) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let sep: number;
+          while ((sep = buffer.indexOf("\n\n")) !== -1) {
+            const chunk = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            const dataLine = chunk.split("\n").find((l) => l.startsWith("data: "));
+            if (!dataLine) continue; // skip non-data frames (comments, heartbeats)
+            try {
+              applyEvent(JSON.parse(dataLine.slice(6)));
+            } catch {}
+          }
+        }
+      } catch {
+        // stream closed or network error — reconnect below
+      }
+
+      if (active) {
+        retryTimer = setTimeout(connect, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 15000); // exponential backoff, capped
+      }
+    };
+
+    connect();
+
+    return () => {
+      active = false;
+      controller?.abort();
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [API_BASE, getAuthHeaders, queryClient]);
+
   const [uploadProgress, setUploadProgress] = useState(0);
 
   // Thresholds

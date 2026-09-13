@@ -22,6 +22,7 @@ import (
 	"github.com/motionmesh/server/shared/models"
 	"github.com/motionmesh/server/shared/pricing"
 	"github.com/motionmesh/server/shared/storage"
+	"github.com/nats-io/nats.go"
 )
 
 // UsageResolver supplies usage counters for plan enforcement (satisfied by billing.Service).
@@ -38,15 +39,19 @@ type Handler struct {
 	bucketSvc    *buckets.Service
 	usage        UsageResolver
 	bucketID     string
+	nc           *nats.Conn
 }
 
-func NewHandler(svc *Service, storage storage.ObjectStorage, transcodeSvc *transcode.Service, bucketSvc *buckets.Service, usage UsageResolver, bucketID string) *Handler {
-	return &Handler{svc: svc, storage: storage, transcodeSvc: transcodeSvc, bucketSvc: bucketSvc, usage: usage, bucketID: bucketID}
+func NewHandler(svc *Service, storage storage.ObjectStorage, transcodeSvc *transcode.Service, bucketSvc *buckets.Service, usage UsageResolver, bucketID string, nc *nats.Conn) *Handler {
+	return &Handler{svc: svc, storage: storage, transcodeSvc: transcodeSvc, bucketSvc: bucketSvc, usage: usage, bucketID: bucketID, nc: nc}
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Get("/", h.HandleListVideos)
 	r.Post("/", h.HandleUploadInitiation)
+	// SSE stream of worker-transcoded status/progress events; registered before
+	// /{id} routes so "status-stream" is never captured as a video id.
+	r.Get("/status-stream", h.HandleVideoStatusStream)
 	r.Get("/{id}", h.HandleGetVideo)
 	r.Delete("/{id}", h.HandleDeleteVideo)
 	r.Post("/{id}/upload", h.HandleProxyUpload)
@@ -61,6 +66,71 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Post("/{id}/multipart-parts", h.HandleMultipartPresignParts)
 	r.Post("/{id}/multipart-complete", h.HandleMultipartComplete)
 	r.Post("/{id}/multipart-abort", h.HandleMultipartAbort)
+}
+
+// HandleVideoStatusStream relays worker-published transcode status/progress
+// events to the dashboard as a Server-Sent Events stream. The client polls
+// every 5s as a fallback; this makes state changes appear instantly.
+func (h *Handler) HandleVideoStatusStream(w http.ResponseWriter, r *http.Request) {
+	acc, ok := r.Context().Value(auth.AccountContextKey).(*models.Account)
+	if !ok || acc == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if h.nc == nil {
+		http.Error(w, "event stream unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
+
+	sub, err := h.nc.SubscribeSync("motionmesh.video.status." + acc.ID)
+	if err != nil {
+		logger.New().Error("video status stream subscribe: %v", err)
+		return
+	}
+	defer sub.Unsubscribe()
+
+	heartbeat := time.NewTicker(15 * time.Second)
+	defer heartbeat.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case <-heartbeat.C:
+			// keep the connection alive through LB idle timeouts
+			if _, err := w.Write([]byte(": ping\n\n")); err != nil {
+				return
+			}
+			flusher.Flush()
+		default:
+		}
+
+		msg, err := sub.NextMsg(250 * time.Millisecond)
+		if err != nil {
+			if err != nats.ErrTimeout {
+				return
+			}
+			continue
+		}
+
+		if _, err := w.Write(append([]byte("data: "), append(msg.Data, '\n', '\n')...)); err != nil {
+			return
+		}
+		flusher.Flush()
+	}
 }
 
 func (h *Handler) HandleListVideos(w http.ResponseWriter, r *http.Request) {

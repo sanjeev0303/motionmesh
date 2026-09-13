@@ -407,6 +407,36 @@ type usageEvent struct {
 	Duration  float64 `json:"duration"`
 }
 
+// videoStatusEvent is published on NATS whenever a video's transcode state
+// changes. The API relays it to the dashboard as an SSE stream so the videos
+// table updates instantly instead of waiting for polling.
+// Subject: motionmesh.video.status.<accountID>
+type videoStatusEvent struct {
+	VideoID         string `json:"video_id"`
+	Status          string `json:"status,omitempty"`
+	ProgressPercent int    `json:"progress_percent,omitempty"`
+}
+
+func (h *Handler) publishVideoStatusEvent(ctx context.Context, videoID string, evt videoStatusEvent) {
+	if h.nc == nil {
+		return
+	}
+	accountID, err := h.getAccountID(ctx, videoID)
+	if err != nil || accountID == "" {
+		h.log.Info("publishVideoStatusEvent: account lookup failed for video %s: %v", videoID, err)
+		return
+	}
+	evt.VideoID = videoID
+	payload, err := json.Marshal(evt)
+	if err != nil {
+		h.log.Error("failed to marshal video status event: %v", err)
+		return
+	}
+	if err := h.nc.Publish("motionmesh.video.status."+accountID, payload); err != nil {
+		h.log.Error("failed to publish video status event for %s: %v", videoID, err)
+	}
+}
+
 func (h *Handler) publishUsageEvent(accountID, videoID string, duration float64) {
 	if h.nc == nil {
 		h.log.Error("NATS connection is nil, cannot publish usage event")
@@ -613,12 +643,16 @@ func (h *Handler) updateJobStatus(ctx context.Context, videoID string, status mo
 	}
 	if status == models.JobStatusProcessing {
 		_, err = h.db.ExecContext(ctx, "UPDATE videos SET status = $1::text, updated_at = now() WHERE id = $2::uuid", models.VideoStatusProcessing, videoID)
+		h.publishVideoStatusEvent(ctx, videoID, videoStatusEvent{Status: string(models.VideoStatusProcessing)})
 	}
 	return err
 }
 
 func (h *Handler) updateJobProgress(ctx context.Context, videoID string, percent int) error {
 	_, err := h.db.ExecContext(ctx, "UPDATE transcode_jobs SET progress_percent = $1::integer, updated_at = now() WHERE video_id = $2::uuid", percent, videoID)
+	if err == nil {
+		h.publishVideoStatusEvent(ctx, videoID, videoStatusEvent{ProgressPercent: percent})
+	}
 	return err
 }
 
@@ -631,6 +665,7 @@ func (h *Handler) failJob(ctx context.Context, videoID string, err error) error 
 	errStr := err.Error()
 	h.db.ExecContext(ctx, "UPDATE transcode_jobs SET status = $1::text, error_msg = $2::text, updated_at = now() WHERE video_id = $3::uuid", models.JobStatusFailed, errStr, videoID)
 	h.db.ExecContext(ctx, "UPDATE videos SET status = $1::text, captions_status = CASE WHEN captions_status = 'processing' THEN 'failed' ELSE captions_status END, updated_at = now() WHERE id = $2::uuid", models.VideoStatusFailed, videoID)
+	h.publishVideoStatusEvent(ctx, videoID, videoStatusEvent{Status: string(models.VideoStatusFailed)})
 	return err
 }
 
@@ -693,6 +728,7 @@ func (h *Handler) finalizeVideo(ctx context.Context, videoID string, duration fl
 		`UPDATE videos SET status = $1, duration = $2, thumbnail_key = $3, sprite_key = $4, preview_key = $5, updated_at = now() WHERE id = $6`,
 		models.VideoStatusReady, duration, t, s, p, videoID,
 	)
+	h.publishVideoStatusEvent(ctx, videoID, videoStatusEvent{Status: string(models.VideoStatusReady), ProgressPercent: 100})
 	return err
 }
 
